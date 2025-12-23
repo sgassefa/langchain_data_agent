@@ -4,16 +4,22 @@ from rich.panel import Panel
 from rich.syntax import Syntax
 
 from data_agent.cli.console import console, err_console
+from data_agent.validators import SQLValidator
 
 
-def print_sql(sql: str, title: str = "Generated SQL") -> None:
+def print_sql(
+    sql: str, title: str = "Generated SQL", dialect: str | None = None
+) -> None:
     """Print SQL with syntax highlighting in a panel.
 
     Args:
         sql: The SQL query string to display.
         title: The panel title.
+        dialect: SQL dialect for formatting.
     """
-    syntax = Syntax(sql.strip(), "sql", theme="monokai", line_numbers=False)
+    validator = SQLValidator(dialect=dialect or "postgres")
+    formatted_sql = validator.format_sql(sql)
+    syntax = Syntax(formatted_sql, "sql", theme="monokai", line_numbers=False)
     panel = Panel(syntax, title=f"[sql]{title}[/sql]", border_style="green")
     console.print(panel)
 

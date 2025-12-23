@@ -175,7 +175,6 @@ async def on_message(message: cl.Message):
                 ).send()
             return
 
-        # Handle both dict and OutputState results
         if isinstance(result, dict):
             datasource_name = result.get("datasource_name", "") or ""
             generated_sql = result.get("generated_sql", "") or ""
@@ -206,19 +205,24 @@ async def on_message(message: cl.Message):
             ) as sql_step:
                 sql_step.output = f"```sql\n{generated_sql}\n```"
 
-        if query_result and query_result.get("rows"):
-            rows = query_result.get("rows", [])
-            columns = query_result.get("columns", [])
-            row_count = query_result.get("row_count", len(rows))
+        if query_result:
+            if isinstance(query_result, dict):
+                rows = query_result.get("rows", [])
+                columns = query_result.get("columns", [])
+                row_count = query_result.get("row_count") or len(rows) if rows else 0
+            else:
+                rows = getattr(query_result, "rows", [])
+                columns = getattr(query_result, "columns", [])
+                row_count = getattr(query_result, "row_count", None) or len(rows) if rows else 0
 
             if columns and rows:
                 df = pd.DataFrame(rows, columns=columns)
                 async with cl.Step(
-                    name=f"📊 Query Results ({row_count} rows)",
+                    name="📊 Raw Results",
                     type="tool",
                     show_input=False,
                 ) as results_step:
-                    elements = [cl.Dataframe(data=df, name="Query Results")]
+                    elements = [cl.Dataframe(data=df, name="Raw Results")]
                     results_step.elements = cast("list[Element]", elements)
                     results_step.output = df.to_markdown(index=False)
 
@@ -233,7 +237,6 @@ async def on_message(message: cl.Message):
             else:
                 await cl.Message(content=f"Error: {error_msg}").send()
         else:
-            # Fallback: show something if no response was generated
             await cl.Message(
                 content="Query completed but no response was generated. Please try rephrasing your question."
             ).send()

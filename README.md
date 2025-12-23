@@ -20,6 +20,8 @@
 
 A natural language to SQL (NL2SQL) platform built on LangGraph and Azure OpenAI. This multi-agent system automatically routes user questions to the appropriate database backend and generates optimized SQL queries and results.
 
+Built on top of LangChain's [`SQLDatabase`](https://docs.langchain.com/oss/python/langchain/sql-agent) with extended support for Azure AD authentication, Cosmos DB, and built-in dialect validation.
+
 ## Features
 
 - **Multi-Database Support**: PostgreSQL, Azure SQL, Azure Synapse, Azure Cosmos DB, Databricks SQL, and Google BigQuery
@@ -27,8 +29,6 @@ A natural language to SQL (NL2SQL) platform built on LangGraph and Azure OpenAI.
 - **Multi-Turn Conversations**: Follow-up questions with context awareness (e.g., "What's the average?" after a query)
 - **SQL Validation**: Safe query execution with sqlglot-based validation across all dialects
 - **Configurable Agents**: YAML-based configuration for adding new data sources
-- **Conversation Persistence**: Built-in checkpointer for maintaining conversation state
-- **Async Architecture**: Fully asynchronous for high-performance query execution
 - **A2A Protocol**: Agent-to-Agent interoperability for integration with other A2A-compliant systems
 
 ## Architecture

@@ -275,12 +275,11 @@ class DataAgentFlow:
 
             system_content = intent_system_prompt.format(agent_descriptions=agent_list)
 
-            # Get recent conversation history for multi-turn context
             history = get_recent_history(state.get("messages", []), max_messages=4)
 
             messages = [
                 SystemMessage(content=system_content),
-                *history,  # Previous turns help detect "more of the same" patterns
+                *history,
                 HumanMessage(content=question),
             ]
 
@@ -356,10 +355,8 @@ class DataAgentFlow:
 
             agent_desc = agent_descriptions[datasource]
 
-            # Get recent conversation history for context
             history = get_recent_history(state.get("messages", []), max_messages=4)
 
-            # Build conversation context summary for the rewriter
             conversation_context = ""
             if history:
                 conversation_context = "\n## Conversation History (for context)\n"

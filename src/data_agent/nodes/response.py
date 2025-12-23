@@ -68,12 +68,11 @@ class ResponseNode:
         sql = state.get("generated_sql", "")
         result = state.get("result", {})
 
-        # Get recent conversation history for conversational continuity
         history = get_recent_history(state.get("messages", []), max_messages=4)
 
         messages = [
             SystemMessage(content=prompt),
-            *history,  # Previous turns for conversational context
+            *history,
             HumanMessage(
                 content=(
                     f"Question: {question}\n\nSQL Query: {sql}\n\nResults: {result}"

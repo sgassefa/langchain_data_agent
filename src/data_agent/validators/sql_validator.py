@@ -320,24 +320,22 @@ class SQLValidator:
             dialect=self.dialect,
         )
 
-    def transpile(self, query: str, target_dialect: str) -> str:
-        """Transpile SQL from one dialect to another.
+    def format_sql(self, query: str, pretty: bool = True) -> str:
+        """Format SQL query with proper indentation.
 
         Args:
-            query: The SQL query to transpile.
-            target_dialect: Target SQL dialect.
+            query: The SQL query to format.
+            pretty: Whether to format with indentation (default True).
 
         Returns:
-            Transpiled SQL query.
-
-        Raises:
-            ValueError: If query cannot be parsed or transpiled.
+            Formatted SQL query, or original if parsing fails.
         """
         try:
             return sqlglot.transpile(
                 query,
                 read=self.dialect,
-                write=target_dialect,
+                write=self.dialect,
+                pretty=pretty,
             )[0]
-        except Exception as e:
-            raise ValueError(f"Failed to transpile query: {e}") from e
+        except Exception:
+            return query.strip()

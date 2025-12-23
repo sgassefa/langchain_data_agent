@@ -122,13 +122,40 @@ class DataAgentNodes:
         # Check by class name to avoid import issues
         return type(datasource).__name__ == "CosmosAdapter"
 
+    def _get_schema_context(self) -> str:
+        """Get schema context from config or dynamically from database.
+
+        If table_schemas is defined in config, uses the static schema.
+        Otherwise, fetches schema dynamically from the database using
+        SQLDatabase.get_table_info().
+
+        Returns:
+            Schema context string for the LLM prompt.
+        """
+        if self._config.table_schemas:
+            return SchemaFormatter.format_schema_context(self._config)
+
+        if not self._is_cosmos and isinstance(self._datasource, SQLDatabase):
+            try:
+                table_info = self._datasource.get_table_info()
+                if table_info:
+                    logger.debug(
+                        "Using dynamic schema from database. Available tables: %s",
+                        table_info,
+                    )
+                    return f"Available tables and their schemas:\n\n{table_info}"
+            except Exception as e:
+                logger.warning("Failed to fetch dynamic schema: %s", e)
+
+        return ""
+
     def _build_prompt(self) -> str:
         """Build system prompt, adding Cosmos constraints if needed.
 
         Returns:
             Formatted system prompt with schema context and date.
         """
-        schema_context = SchemaFormatter.format_schema_context(self._config)
+        schema_context = self._get_schema_context()
         few_shot = SchemaFormatter.format_few_shot_examples(self._config)
         base_prompt = self._config.system_prompt or DEFAULT_SQL_PROMPT
 
