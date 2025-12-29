@@ -49,6 +49,9 @@ dependencies = [
     "databricks-sqlalchemy>=2.0.8",
     "google-cloud-bigquery-storage>=2.36.0",
     "psycopg2>=2.9.11",
+    "langchain-experimental>=0.4.1",
+    "langchain-azure-dynamic-sessions>=0.2.0",
+    "matplotlib>=3.10.8",
 ]
 
 [project.scripts]

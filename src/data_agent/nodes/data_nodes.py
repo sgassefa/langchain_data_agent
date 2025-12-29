@@ -28,31 +28,9 @@ if TYPE_CHECKING:
     from data_agent.adapters.azure.cosmos import CosmosAdapter
     from data_agent.models.state import AgentState
 
+from data_agent.prompts import COSMOS_PROMPT_ADDENDUM, DEFAULT_SQL_PROMPT
+
 logger = logging.getLogger(__name__)
-
-DEFAULT_SQL_PROMPT = """You are a SQL expert. Generate a syntactically correct SQL query.
-Limit results to 10 unless specified. Only select relevant columns.
-
-## Conversation Context
-If this is a follow-up question, use the conversation history to understand what the user is referring to:
-- When in doubt, infer context from the most recent SQL query in the conversation
-
-IMPORTANT: Always generate a single, executable SQL query. Never include comments, explanations, or multiple query options.
-
-{schema_context}
-
-{few_shot_examples}"""
-
-COSMOS_PROMPT_ADDENDUM = """
-Key Cosmos DB constraints:
-1. Queries operate on a SINGLE container - no cross-container or cross-document joins.
-2. JOIN only works WITHIN documents (to traverse arrays), not across documents.
-3. Always filter on partition key ({partition_key}) for performance - avoids fan-out queries.
-4. DISTINCT inside aggregate functions (COUNT, SUM, AVG) is NOT supported.
-5. Aggregates without partition key filter may timeout or consume high RUs.
-6. SUM/AVG return undefined if any value is string, boolean, or null.
-7. Max 4MB response per page; use continuation tokens for large results.
-"""
 
 
 class DataAgentNodes:
@@ -182,7 +160,7 @@ class DataAgentNodes:
             state: Current agent state containing the question.
 
         Returns:
-            State update with generated SQL, dialect, and messages.
+            State update with generated SQL, dialect, visualization_requested, and messages.
         """
         question = state["question"]
         logger.debug("Generating query for: %s", question[:100])
@@ -201,10 +179,22 @@ class DataAgentNodes:
         )
         cleaned = clean_sql_query(sql)
 
-        logger.debug("Generated SQL: %s", cleaned)
+        # Extract visualization intent from LLM output
+        visualization_requested = (
+            result.visualization_requested
+            if isinstance(result, SQLGeneratorOutput)
+            else False
+        )
+
+        logger.debug(
+            "Generated SQL: %s, visualization_requested: %s",
+            cleaned,
+            visualization_requested,
+        )
         return {
             "generated_sql": cleaned,
             "dialect": self._dialect,
+            "visualization_requested": visualization_requested,
             "messages": [
                 AIMessage(content=f"```sql\n{cleaned}\n```", name="sql_generator"),
             ],

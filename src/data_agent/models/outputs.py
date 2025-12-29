@@ -14,6 +14,7 @@ class SQLGeneratorOutput(BaseModel):
         thinking: Step-by-step reasoning about how to answer the question.
         sql_query: The generated SQL query.
         explanation: Brief explanation of what the query does.
+        visualization_requested: Whether the user wants a chart/graph/visualization.
     """
 
     thinking: str = Field(
@@ -21,6 +22,10 @@ class SQLGeneratorOutput(BaseModel):
     )
     sql_query: str = Field(description="The SQL query that answers the user's question")
     explanation: str = Field(description="Brief explanation of what the query does")
+    visualization_requested: bool = Field(
+        default=False,
+        description="Whether the user is asking for a chart, graph, plot, or visual representation of the data",
+    )
 
 
 class SQLValidationOutput(BaseModel):

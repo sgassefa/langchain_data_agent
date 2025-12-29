@@ -16,6 +16,7 @@ from .config import (
     CONFIG_DIR,
     DATASOURCE_TYPES,
     AgentConfig,
+    CodeInterpreterConfig,
     DataAgentConfig,
     Datasource,
     FewShotExample,
@@ -166,6 +167,9 @@ class ConfigLoader:
             datasource=cls._parse_datasource(data.get("datasource")),
             llm_config=LLMConfig.from_dict(data.get("llm", {})),
             validation_config=ValidationConfig.from_dict(data.get("validation", {})),
+            code_interpreter=CodeInterpreterConfig.from_dict(
+                data.get("code_interpreter", {})
+            ),
             system_prompt=data.get("system_prompt", ""),
             response_prompt=data.get("response_prompt", ""),
             table_schemas=[

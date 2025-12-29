@@ -17,13 +17,9 @@ from data_agent.utils.message_utils import get_recent_history
 if TYPE_CHECKING:
     from data_agent.models.state import AgentState
 
+from data_agent.prompts import DEFAULT_RESPONSE_PROMPT
+
 logger = logging.getLogger(__name__)
-
-DEFAULT_RESPONSE_PROMPT = """You are a helpful data analyst. Given the user's question,
-the SQL query that was executed, and the results, provide a clear and concise natural
-language response that answers the user's question.
-
-Be conversational but precise. Include relevant numbers and insights from the data."""
 
 
 class ResponseNode:
@@ -67,6 +63,12 @@ class ResponseNode:
         question = state["question"]
         sql = state.get("generated_sql", "")
         result = state.get("result", {})
+
+        # Check if visualization was generated - if so, modify the prompt
+        # to avoid generating ASCII charts or code snippets
+        visualization_image = state.get("visualization_image")
+        if visualization_image:
+            prompt += "\n\nIMPORTANT: A visualization/chart has already been generated and will be displayed separately. Do NOT create ASCII charts, text-based charts, or matplotlib code snippets. Focus only on providing insights and analysis of the data."
 
         history = get_recent_history(state.get("messages", []), max_messages=4)
 

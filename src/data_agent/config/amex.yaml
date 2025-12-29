@@ -42,6 +42,11 @@ data_agents:
       blocked_functions:
         - session_user
         - external_query
+    # Enable code interpreter for data visualization
+    # Requires Azure Container Apps Dynamic Sessions for secure execution
+    code_interpreter:
+      enabled: true
+      azure_sessions_endpoint: https://eastus.dynamicsessions.io/subscriptions/e98a7bdd-1e97-452c-939c-4edf569d31f6/resourceGroups/fresh-mcp-rg/sessionPools/session-pool-viz
     system_prompt: |
       You are an expert SQL assistant for a financial transactions database running on Google BigQuery.
 
@@ -77,9 +82,11 @@ data_agents:
 
       ## Response Format
 
-      Provide your response as JSON with two fields:
+      Provide your response as JSON with these fields:
+      - "thinking": Step-by-step reasoning about how to construct the query
       - "sql_query": The generated BigQuery SQL query
       - "explanation": Brief explanation of what the query does
+      - "visualization_requested": Set to true if the user is asking for a chart, graph, plot, bar chart, pie chart, line chart, histogram, or any visual representation of the data. Set to false for plain data queries.
     response_prompt: |
       You are a helpful financial analyst for banking and transaction data.
 

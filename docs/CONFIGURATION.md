@@ -35,6 +35,8 @@ data_agents:
       blocked_functions:
         - pg_sleep
         - pg_read_file
+    code_interpreter:
+      enabled: true
     system_prompt: |
       You are an SQL assistant...
       {schema_context}
@@ -53,6 +55,25 @@ data_agents:
         sql_query: "SELECT COUNT(*) FROM users"
         answer: "There are 1,234 users."
 ```
+
+## Code Interpreter (Data Visualization)
+
+Enable the code interpreter to generate charts and visualizations from query results. When enabled, the LLM can detect visualization intent (e.g., "show me a chart", "visualize", "plot") and generate matplotlib code to create charts.
+
+```yaml
+code_interpreter:
+  enabled: true
+  azure_sessions_endpoint: ${AZURE_SESSIONS_POOL_ENDPOINT}
+```
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `enabled` | Enable/disable visualization generation | `false` |
+| `azure_sessions_endpoint` | Azure Container Apps session pool management endpoint URL | - |
+
+**Note:** Visualization requires Azure Container Apps Dynamic Sessions for secure, isolated code execution.
+
+See [VISUALIZATION.md](VISUALIZATION.md) for complete setup instructions, architecture details, and troubleshooting.
 
 ## SQL Validation
 
