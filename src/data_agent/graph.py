@@ -14,9 +14,11 @@ from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
 from data_agent.config import DataAgentConfig
+from data_agent.executors import create_executor
 from data_agent.models.state import AgentState, InputState, OutputState
 from data_agent.nodes.data_nodes import DataAgentNodes
 from data_agent.nodes.response import ResponseNode
+from data_agent.nodes.visualization import VisualizationNode
 
 if TYPE_CHECKING:
     from langchain_community.utilities.sql_database import SQLDatabase
@@ -62,6 +64,12 @@ class DataAgentGraph:
         self._nodes = DataAgentNodes(llm, datasource, config, max_retries)
         self._response_node = ResponseNode(llm, config)
 
+        # Initialize visualization node if code_interpreter is enabled
+        self._viz_node: VisualizationNode | None = None
+        if config.code_interpreter.enabled:
+            executor = create_executor(config.code_interpreter)
+            self._viz_node = VisualizationNode(llm, executor)
+
     def _should_retry(self, state: AgentState) -> str:
         """Determine if SQL generation should be retried.
 
@@ -80,16 +88,20 @@ class DataAgentGraph:
             return "end"
         return "retry"
 
-    def _check_error(self, state: AgentState) -> str:
-        """Check if there's an error after query execution.
+    def _route_after_execute(self, state: AgentState) -> str:
+        """Route after query execution based on error and visualization request.
 
         Args:
             state: Current agent state.
 
         Returns:
-            'error' if execution failed, 'success' otherwise.
+            'error' if execution failed, 'visualize' if visualization requested, 'respond' otherwise.
         """
-        return "error" if state.get("error") else "success"
+        if state.get("error"):
+            return "error"
+        if self._viz_node and state.get("visualization_requested", False):
+            return "visualize"
+        return "respond"
 
     def build(self) -> StateGraph:
         """Build the state graph without compiling.
@@ -106,6 +118,8 @@ class DataAgentGraph:
         graph.add_node("retry_sql", self._nodes.retry_sql)
         graph.add_node("execute_query", self._nodes.execute_query)
         graph.add_node("generate_response", self._response_node.generate_response)
+        if self._viz_node:
+            graph.add_node("visualize_data", self._viz_node.generate_visualization)
 
         graph.set_entry_point("generate_sql")
 
@@ -118,9 +132,15 @@ class DataAgentGraph:
         graph.add_edge("retry_sql", "validate_sql")
         graph.add_conditional_edges(
             "execute_query",
-            self._check_error,
-            {"error": END, "success": "generate_response"},
+            self._route_after_execute,
+            {
+                "error": END,
+                "visualize": "visualize_data",
+                "respond": "generate_response",
+            },
         )
+        if self._viz_node:
+            graph.add_edge("visualize_data", "generate_response")
         graph.add_edge("generate_response", END)
 
         return graph

@@ -31,6 +31,9 @@ class OutputState(TypedDict):
         datasource_name: Name of the agent/datasource that handled the query.
         rewritten_question: The question after query rewriting (if different from original).
         messages: Accumulated LLM conversation messages (for debugging).
+        visualization_image: Base64-encoded PNG image of chart (if visualization was requested).
+        visualization_code: Generated Python code for visualization.
+        visualization_error: Error message if visualization generation failed.
     """
 
     generated_sql: str
@@ -40,6 +43,9 @@ class OutputState(TypedDict):
     datasource_name: NotRequired[str]
     rewritten_question: NotRequired[str]
     messages: NotRequired[list[AnyMessage]]
+    visualization_image: NotRequired[str | None]
+    visualization_code: NotRequired[str | None]
+    visualization_error: NotRequired[str | None]
 
 
 class AgentState(TypedDict):
@@ -61,6 +67,10 @@ class AgentState(TypedDict):
         retry_count: Current retry attempt number.
         rewritten_question: The question after query rewriting (if different from original).
         validation_result: SQL validation output with status, errors, and warnings.
+        visualization_requested: Whether the user requested a visualization (set by generate_sql).
+        visualization_image: Base64-encoded PNG image of generated chart.
+        visualization_code: Generated Python code for visualization.
+        visualization_error: Error message if visualization generation failed.
     """
 
     question: str
@@ -75,3 +85,7 @@ class AgentState(TypedDict):
     retry_count: NotRequired[int]
     rewritten_question: NotRequired[str]
     validation_result: NotRequired[SQLValidationOutput | None]
+    visualization_requested: NotRequired[bool]
+    visualization_image: NotRequired[str | None]
+    visualization_code: NotRequired[str | None]
+    visualization_error: NotRequired[str | None]

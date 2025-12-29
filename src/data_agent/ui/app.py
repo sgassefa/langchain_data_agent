@@ -1,5 +1,6 @@
 """Chainlit UI application for Data Agent."""
 
+import base64
 import logging
 import os
 from typing import cast
@@ -183,16 +184,23 @@ async def on_message(message: cl.Message):
             query_result = result.get("result", {}) or {}
             final_response = result.get("final_response", "") or ""
             error = result.get("error") or None
+            visualization_image = result.get("visualization_image") or None
+            visualization_code = result.get("visualization_code") or None
+            visualization_error = result.get("visualization_error") or None
         else:
             datasource_name = getattr(result, "datasource_name", "") or ""
             generated_sql = getattr(result, "generated_sql", "") or ""
             query_result = getattr(result, "result", {}) or {}
             final_response = getattr(result, "final_response", "") or ""
             error = getattr(result, "error", None)
+            visualization_image = getattr(result, "visualization_image", None)
+            visualization_code = getattr(result, "visualization_code", None)
+            visualization_error = getattr(result, "visualization_error", None)
 
         logger.info(
             f"Parsed - datasource: {datasource_name}, sql: {bool(generated_sql)}, "
-            f"result: {bool(query_result)}, response: {bool(final_response)}, error: {error}"
+            f"result: {bool(query_result)}, response: {bool(final_response)}, "
+            f"viz: {bool(visualization_image)}, error: {error}"
         )
 
         if datasource_name:
@@ -245,6 +253,41 @@ async def on_message(message: cl.Message):
                 content="Query completed but no response was generated. Please try rephrasing your question."
             ).send()
 
+        if visualization_code:
+            async with cl.Step(
+                name="🐍 Generated Visualization Code", type="tool", show_input=False
+            ) as code_step:
+                code_step.output = f"```python\n{visualization_code}\n```"
+
+        if visualization_image:
+            try:
+                # Decode base64 to bytes
+                image_bytes = base64.b64decode(visualization_image)
+
+                elements = [
+                    cl.Image(
+                        name="chart",
+                        content=image_bytes,
+                        display="inline",
+                        size="large",
+                    )
+                ]
+                await cl.Message(
+                    content="📊 Visualization:",
+                    elements=cast("list[Element]", elements),
+                ).send()
+            except Exception as e:
+                logger.error(f"Failed to render visualization: {e}")
+                await cl.Message(
+                    content=f"⚠️ Failed to render visualization: {e}"
+                ).send()
+
+        # Handle visualization errors
+        if visualization_error:
+            await cl.Message(
+                content=f"⚠️ Could not generate visualization: {visualization_error}"
+            ).send()
+
     except Exception as e:
         logger.exception("Error processing message")
         await cl.Message(content=f"An error occurred: {e}").send()
@@ -273,6 +316,7 @@ def main() -> None:
             "localhost",
             "--port",
             "8000",
+            "-w",
         ],
         check=True,
     )

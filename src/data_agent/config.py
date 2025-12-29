@@ -323,6 +323,44 @@ class ValidationConfig:
 
 
 @dataclass
+class CodeInterpreterConfig:
+    """Configuration for code interpreter / visualization feature.
+
+    Visualization requires deploying an Azure Container Apps session pool
+    for secure, isolated code execution. See docs/CONFIGURATION.md.
+
+    Attributes:
+        enabled: Whether to enable the code interpreter feature.
+        azure_sessions_endpoint: Pool management endpoint for Azure Sessions.
+            Can also be set via AZURE_SESSIONS_POOL_ENDPOINT environment variable.
+    """
+
+    enabled: bool = False
+    azure_sessions_endpoint: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate configuration."""
+        import os
+
+        if self.enabled:
+            endpoint = self.azure_sessions_endpoint or os.getenv(
+                "AZURE_SESSIONS_POOL_ENDPOINT"
+            )
+            if not endpoint:
+                raise ValueError(
+                    "azure_sessions_endpoint is required when code_interpreter is enabled. "
+                    "Set in config or via AZURE_SESSIONS_POOL_ENDPOINT environment variable."
+                )
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CodeInterpreterConfig":
+        return cls(
+            enabled=data.get("enabled", False),
+            azure_sessions_endpoint=data.get("azure_sessions_endpoint"),
+        )
+
+
+@dataclass
 class DataAgentConfig:
     """Configuration for a single data agent."""
 
@@ -331,6 +369,9 @@ class DataAgentConfig:
     datasource: Datasource | None = None
     llm_config: LLMConfig = field(default_factory=LLMConfig)
     validation_config: ValidationConfig = field(default_factory=ValidationConfig)
+    code_interpreter: CodeInterpreterConfig = field(
+        default_factory=CodeInterpreterConfig
+    )
     system_prompt: str = ""
     response_prompt: str = ""
     table_schemas: list[TableSchema] = field(default_factory=list)

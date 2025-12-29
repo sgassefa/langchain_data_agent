@@ -561,6 +561,9 @@ Respond with ONLY the rewritten question, nothing else."""
             datasource_name=result.get("datasource_name", ""),
             rewritten_question=result.get("rewritten_question", ""),
             messages=result.get("messages", []),
+            visualization_image=result.get("visualization_image"),
+            visualization_code=result.get("visualization_code"),
+            visualization_error=result.get("visualization_error"),
         )
 
     def get_agent_names(self) -> list[str]:

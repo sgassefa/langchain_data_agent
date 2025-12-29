@@ -28,6 +28,7 @@ Built on top of LangChain's [`SQLDatabase`](https://docs.langchain.com/oss/pytho
 - **Intent Detection**: Automatically routes queries to the correct data agent based on question context
 - **Multi-Turn Conversations**: Follow-up questions with context awareness (e.g., "What's the average?" after a query)
 - **SQL Validation**: Safe query execution with sqlglot-based validation across all dialects
+- **Data Visualization**: Generate charts and graphs from query results using natural language (e.g., "show me a bar chart")
 - **Configurable Agents**: YAML-based configuration for adding new data sources
 - **A2A Protocol**: Agent-to-Agent interoperability for integration with other A2A-compliant systems
 
@@ -49,6 +50,7 @@ Generates, validates, and executes SQL queries with retry logic.
 
 - [Database Setup](docs/DATABASE_SETUP.md)
 - [Configuration](docs/CONFIGURATION.md)
+- [Data Visualization](docs/VISUALIZATION.md)
 - [A2A Protocol](docs/A2A.md)
 
 ## Quick Start
@@ -163,6 +165,7 @@ data-agent chat -c adventure_works
 1. What are the total deposits by customer segment?
 2. Show me all high-severity fraud alerts from the past week
 3. Who are the top 5 customers by transaction volume?
+4. Show me a bar chart of transactions by type
 
 ```bash
 data-agent query "What are the total deposits by customer segment?" -c amex
