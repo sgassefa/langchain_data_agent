@@ -120,23 +120,16 @@ Or in `.env`:
 AZURE_SESSIONS_POOL_ENDPOINT=https://eastus.dynamicsessions.io/subscriptions/.../sessionPools/...
 ```
 
-### YAML Configuration
+### Executor Selection
 
-Enable visualization in your agent config:
+The system automatically selects the executor based on environment:
 
-```yaml
-data_agents:
-  - name: "sales_agent"
-    # ... other config ...
-    code_interpreter:
-      enabled: true
-      azure_sessions_endpoint: ${AZURE_SESSIONS_POOL_ENDPOINT}
-```
+| `AZURE_SESSIONS_POOL_ENDPOINT` | Executor | Use Case |
+|-------------------------------|----------|----------|
+| Set | Azure Sessions | Production (secure, Hyper-V isolation) |
+| Not set | Local Python REPL | Development (fast, no sandboxing) |
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `enabled` | Enable/disable visualization | `false` |
-| `azure_sessions_endpoint` | Session pool management endpoint URL | - |
+**No YAML configuration needed** - visualization is always enabled, with the executor determined by environment.
 
 ### System Prompt
 
