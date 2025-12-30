@@ -31,10 +31,7 @@ def create_executor() -> CodeExecutor:
         return AzureSessionsExecutor(
             pool_management_endpoint=settings.azure_sessions_pool_endpoint,
         )
-    else:
-        from data_agent.executors.local import LocalExecutor
+    from data_agent.executors.local import LocalExecutor
 
-        logger.info(
-            "Using local Python REPL executor (development only, no sandboxing)"
-        )
-        return LocalExecutor()
+    logger.info("Using local Python REPL executor (development only, no sandboxing)")
+    return LocalExecutor()
