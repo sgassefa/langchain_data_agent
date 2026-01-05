@@ -2,6 +2,25 @@
 
 Welcome to the NL2SQL Data Agent course! This guide will get you up and running in under 5 minutes.
 
+---
+
+## 🔑 Understanding Credentials
+
+This course uses **two types of credentials** for different purposes:
+
+| Credential | Purpose | When Needed |
+|------------|---------|-------------|
+| **GitHub Token** | Powers the AI that generates SQL from your questions | Always (for NL2SQL agent) |
+| **Database Credentials** | Connects to cloud databases where data lives | Only for MySQL, PostgreSQL, Azure SQL |
+
+```
+Your Question → [GitHub Token/AI] → Generates SQL → [Database Credentials] → Runs Query → Results
+```
+
+**Good news:** The **University database (SQLite)** requires NO database credentials - it's a local file!
+
+---
+
 ## 🚀 Option 1: GitHub Codespaces (Recommended - Zero Install)
 
 ### Step 1: Open in Codespaces
@@ -21,7 +40,7 @@ GitHub Models is **free** for all GitHub users! You just need a Personal Access 
 5. Click **"Generate token"**
 6. Copy the token (starts with `github_pat_...`)
 
-### Step 3: Add Your Token
+### Step 3: Configure Your Environment
 1. Open the `.env` file in the file explorer
 2. Add your GitHub token:
    ```
@@ -58,13 +77,39 @@ You should see a response with courses and the generated SQL! 🎉
 
 ## 📚 Available Databases
 
-| Config | Database | Description |
-|--------|----------|-------------|
-| `university` | SQLite | Academic database with courses, students, instructors |
-| `chinook` | MySQL | Digital media store (requires MySQL setup) |
-| `pagila` | PostgreSQL | DVD rental store (requires PostgreSQL setup) |
+| Config | Database | Credentials Needed | Description |
+|--------|----------|-------------------|-------------|
+| `university` | SQLite | ❌ None | Academic database - **Start here!** |
+| `chinook` | MySQL | ✅ Student credentials | Digital media store |
+| `pagila` | PostgreSQL | ✅ Student credentials | DVD rental store |
+| `contoso_hr` | Azure SQL | ✅ Student credentials | HR management |
 
-For this course, we'll primarily use the **University** database (SQLite) as it requires no additional setup.
+### 🎓 For Weeks 1-4: Use University Database Only
+The **University** database (SQLite) requires no additional setup - perfect for learning SQL basics!
+
+### 🔐 For Weeks 5+: Cloud Database Access
+Your instructor will provide individual credentials for cloud databases:
+
+| Database | Your Username | Your Password |
+|----------|--------------|---------------|
+| MySQL (Chinook) | `studentXX` | *(provided in class)* |
+| PostgreSQL (Pagila) | `studentXX` | *(provided in class)* |
+| Azure SQL (ContosoHR) | `studentXX` | *(provided in class)* |
+
+Add these to your `.env` file when needed:
+```bash
+# MySQL (Chinook)
+MYSQL_USER=studentXX
+MYSQL_PASSWORD=your-password-here
+
+# PostgreSQL (Pagila)  
+POSTGRES_USER=studentXX
+POSTGRES_PASSWORD=your-password-here
+
+# Azure SQL (ContosoHR)
+AZURE_SQL_USER=studentXX
+AZURE_SQL_PASSWORD=your-password-here
+```
 
 ---
 
@@ -117,10 +162,16 @@ The University database contains these tables:
 
 ## 🛠️ Troubleshooting
 
-### "Invalid API key" Error
-- Verify your API key is correct in `.env`
+### "Invalid API key" or "Authentication failed" (GitHub Token)
+- Verify your GitHub token is correct in `.env`
 - Make sure there are no extra spaces or quotes
-- Ensure you have credits in your OpenAI account
+- Check that your token has "Models: Read" permission
+- Try generating a new token
+
+### "Connection refused" or "Access denied" (Database)
+- Verify your database credentials are correct
+- Check you're using the right username/password for your student number
+- Ensure the database server is accessible (ask instructor if unsure)
 
 ### "Module not found" Error
 Run: `uv sync` to reinstall dependencies
