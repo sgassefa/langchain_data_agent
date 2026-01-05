@@ -11,20 +11,25 @@ Welcome to the NL2SQL Data Agent course! This guide will get you up and running 
 4. Click **"Create codespace on main"**
 5. Wait ~2 minutes for the environment to build
 
-### Step 2: Add Your API Key
+### Step 2: Get Your GitHub Token (FREE!)
+GitHub Models is **free** for all GitHub users! You just need a Personal Access Token:
+
+1. Go to [github.com/settings/tokens](https://github.com/settings/tokens?type=beta)
+2. Click **"Generate new token"** → **"Fine-grained token"**
+3. Give it a name like "NL2SQL Course"
+4. Under **"Permissions"**, find **"Models"** and set to **"Read"**
+5. Click **"Generate token"**
+6. Copy the token (starts with `github_pat_...`)
+
+### Step 3: Add Your Token
 1. Open the `.env` file in the file explorer
-2. Add your OpenAI API key:
+2. Add your GitHub token:
    ```
-   OPENAI_API_KEY=sk-your-api-key-here
+   GITHUB_TOKEN=github_pat_your-token-here
    ```
 3. Save the file (Ctrl+S / Cmd+S)
 
-> 💡 **Don't have an OpenAI API key?** 
-> - Sign up at [platform.openai.com](https://platform.openai.com)
-> - Go to API Keys → Create new secret key
-> - Add $5-10 credit (queries cost ~$0.01 each)
-
-### Step 3: Test Your Setup
+### Step 4: Test Your Setup
 Open the terminal (Ctrl+` or View → Terminal) and run:
 
 ```bash
@@ -46,7 +51,7 @@ You should see a response with courses and the generated SQL! 🎉
 1. Clone the repository
 2. Open in VS Code
 3. Click **"Reopen in Container"** when prompted
-4. Edit `.env` with your API key
+4. Edit `.env` with your GitHub token
 5. Run test queries
 
 ---
