@@ -25,7 +25,9 @@ from data_agent.config import (
     CosmosDatasource,
     DataAgentConfig,
     DatabricksDatasource,
+    MySQLDatasource,
     PostgresDatasource,
+    SQLiteDatasource,
     SynapseDatasource,
 )
 from data_agent.config_loader import ConfigLoader
@@ -204,6 +206,25 @@ class DataAgentFlow:
                     project=ds.project or ds.project_id,
                     dataset=ds.dataset,
                     credentials_path=ds.credentials_path,
+                )
+            case MySQLDatasource():
+                if ds.connection_string:
+                    return create_sql_database(
+                        "mysql",
+                        connection_string=ds.connection_string,
+                    )
+                return create_sql_database(
+                    "mysql",
+                    host=ds.host,
+                    port=ds.port,
+                    database=ds.database,
+                    username=ds.username,
+                    password=ds.password,
+                )
+            case SQLiteDatasource():
+                return create_sql_database(
+                    "sqlite",
+                    database=ds.database,
                 )
             case _:
                 logger.warning("Agent '%s' has unknown datasource type.", name)

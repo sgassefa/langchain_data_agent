@@ -214,9 +214,13 @@ def _build_mysql_uri(
     password: str | None,
     **options: Any,
 ) -> str:
-    """Build MySQL connection URI."""
+    """Build MySQL connection URI with SSL support for Azure MySQL."""
+    from urllib.parse import quote_plus
     port = port or 3306
-    return f"mysql+pymysql://{username}:{password}@{host}:{port}/{database}"
+    # URL-encode password to handle special characters
+    encoded_password = quote_plus(password) if password else ""
+    # Azure MySQL requires SSL - add ssl_ca=true to enable SSL verification
+    return f"mysql+pymysql://{username}:{encoded_password}@{host}:{port}/{database}?ssl=true&ssl_verify_cert=false"
 
 
 def _build_sqlite_uri(

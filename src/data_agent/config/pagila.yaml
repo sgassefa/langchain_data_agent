@@ -1,0 +1,427 @@
+# Pagila Database (PostgreSQL) - NL2SQL Agent Configuration
+# DVD Rental store database - PostgreSQL's most popular sample database
+
+intent_detection_agent:
+  llm:
+    model: gpt-4o-mini
+    provider: openai
+    api_version: 2024-12-01-preview
+    temperature: 1.0
+    max_tokens: 500
+  system_prompt: |
+    You are an intent detection assistant responsible for routing user questions to the appropriate data agent.
+    ## Available Data Agents
+
+    {agent_descriptions}
+
+    ## Instructions
+
+    1. Analyze the user's question to understand what data they are asking about.
+    2. Match the question to the most relevant data agent based on the domain and data types.
+    3. If the question is ambiguous, choose the agent most likely to have the relevant data.
+    4. If no agent is a clear match, respond with "unknown".
+
+    ## Response Format
+
+    Respond with ONLY the agent name (e.g., "pagila_dvd"). Do not include any explanation.
+
+data_agents:
+  - name: pagila_dvd
+    datasource:
+      type: postgres
+      host: lis4230postgres.postgres.database.azure.com
+      port: 5432
+      database: pagila
+      username: dbadmin
+      password: goRDBMS4230 
+    llm:
+      model: gpt-4o-mini
+      provider: openai
+      api_version: 2024-12-01-preview
+      temperature: 1.0
+      max_tokens: 2000
+    system_prompt: |
+      You are an expert SQL assistant for the Pagila DVD rental database running on PostgreSQL.
+      
+      ## Your Role
+
+      Generate accurate, efficient PostgreSQL queries based on natural language questions. You have access to film catalog, customer, rental, and payment data.
+      
+      ## Database Context
+
+      {schema_context}
+
+      ## Examples
+
+      {few_shot_examples}
+
+      ## PostgreSQL Generation Guidelines
+
+      1. **Use only tables and columns defined in the schema above.** Never reference tables or columns not listed.
+      2. **Use PostgreSQL syntax.** This includes:
+         - LIMIT and OFFSET for pagination
+         - || for string concatenation
+         - EXTRACT() or DATE_PART() for date components
+         - NOW(), CURRENT_DATE, CURRENT_TIMESTAMP
+         - COALESCE() for null handling
+         - INTERVAL for date arithmetic
+         - Array functions if needed
+      3. **Always qualify column names** with table aliases to avoid ambiguity.
+      4. **Use double quotes** for case-sensitive identifiers if needed.
+      5. **Use appropriate JOINs** when combining data from multiple tables.
+      6. **Use schemas** - Pagila uses public schema.
+      7. **Use GROUP BY** for aggregations and ORDER BY for sorting results.
+      8. **Window functions** are available for advanced analytics.
+
+      ## Response Format
+
+      Provide your response as JSON with two fields:
+      - "sql_query": The generated PostgreSQL query
+      - "explanation": Brief explanation of what the query does
+    response_prompt: |
+      You are a helpful DVD rental store analyst.
+
+      Given the user's question, the SQL query that was executed, and the results,
+      provide a clear and concise natural language response.
+
+      Be conversational but precise. Include relevant numbers, percentages, and insights.
+      Format currency values with $ and commas. Format large numbers for readability.
+      If the results are empty, explain what that means in context.
+
+      ## Data Presentation
+
+      When the query returns tabular data (multiple rows/columns), ALWAYS include a formatted markdown table.
+      - Use proper markdown table syntax with headers
+      - Align numeric columns to the right
+      - Format prices with $ and two decimal places
+      - Format dates in readable format
+      - Limit tables to 20 rows max; note if more exist
+    table_schemas:
+      - table_name: public.film
+        table_description: DVD films available for rental
+        columns:
+          - column_name: film_id
+            data_type: INTEGER
+            description: Unique film identifier (Primary Key)
+          - column_name: title
+            data_type: VARCHAR(255)
+            description: Film title
+          - column_name: description
+            data_type: TEXT
+            description: Film description/plot summary
+          - column_name: release_year
+            data_type: INTEGER
+            description: Year the film was released
+          - column_name: language_id
+            data_type: INTEGER
+            description: Foreign key to language table
+          - column_name: original_language_id
+            data_type: INTEGER
+            description: Original language (if different)
+          - column_name: rental_duration
+            data_type: SMALLINT
+            description: Default rental period in days
+          - column_name: rental_rate
+            data_type: NUMERIC(4,2)
+            description: Rental price per day
+          - column_name: length
+            data_type: SMALLINT
+            description: Film duration in minutes
+          - column_name: replacement_cost
+            data_type: NUMERIC(5,2)
+            description: Cost to replace if lost/damaged
+          - column_name: rating
+            data_type: VARCHAR(10)
+            description: MPAA rating (G, PG, PG-13, R, NC-17)
+          - column_name: special_features
+            data_type: TEXT[]
+            description: Array of special features (Trailers, Commentaries, etc.)
+          - column_name: fulltext
+            data_type: TSVECTOR
+            description: Full-text search vector
+      - table_name: public.actor
+        table_description: Film actors
+        columns:
+          - column_name: actor_id
+            data_type: INTEGER
+            description: Unique actor identifier (Primary Key)
+          - column_name: first_name
+            data_type: VARCHAR(45)
+            description: Actor first name
+          - column_name: last_name
+            data_type: VARCHAR(45)
+            description: Actor last name
+          - column_name: last_update
+            data_type: TIMESTAMP
+            description: Last record update
+      - table_name: public.film_actor
+        table_description: Junction table linking films to actors (many-to-many)
+        columns:
+          - column_name: actor_id
+            data_type: INTEGER
+            description: Foreign key to actor table
+          - column_name: film_id
+            data_type: INTEGER
+            description: Foreign key to film table
+      - table_name: public.category
+        table_description: Film categories/genres
+        columns:
+          - column_name: category_id
+            data_type: INTEGER
+            description: Unique category identifier (Primary Key)
+          - column_name: name
+            data_type: VARCHAR(25)
+            description: Category name (Action, Comedy, Drama, etc.)
+      - table_name: public.film_category
+        table_description: Junction table linking films to categories
+        columns:
+          - column_name: film_id
+            data_type: INTEGER
+            description: Foreign key to film table
+          - column_name: category_id
+            data_type: INTEGER
+            description: Foreign key to category table
+      - table_name: public.language
+        table_description: Film languages
+        columns:
+          - column_name: language_id
+            data_type: INTEGER
+            description: Unique language identifier (Primary Key)
+          - column_name: name
+            data_type: VARCHAR(20)
+            description: Language name (English, Italian, etc.)
+      - table_name: public.inventory
+        table_description: Physical DVD copies in inventory
+        columns:
+          - column_name: inventory_id
+            data_type: INTEGER
+            description: Unique inventory identifier (Primary Key)
+          - column_name: film_id
+            data_type: INTEGER
+            description: Foreign key to film table
+          - column_name: store_id
+            data_type: INTEGER
+            description: Foreign key to store table
+      - table_name: public.store
+        table_description: Rental store locations
+        columns:
+          - column_name: store_id
+            data_type: INTEGER
+            description: Unique store identifier (Primary Key)
+          - column_name: manager_staff_id
+            data_type: INTEGER
+            description: Store manager (FK to staff)
+          - column_name: address_id
+            data_type: INTEGER
+            description: Store address (FK to address)
+      - table_name: public.customer
+        table_description: Store customers
+        columns:
+          - column_name: customer_id
+            data_type: INTEGER
+            description: Unique customer identifier (Primary Key)
+          - column_name: store_id
+            data_type: INTEGER
+            description: Home store (FK to store)
+          - column_name: first_name
+            data_type: VARCHAR(45)
+            description: Customer first name
+          - column_name: last_name
+            data_type: VARCHAR(45)
+            description: Customer last name
+          - column_name: email
+            data_type: VARCHAR(50)
+            description: Customer email
+          - column_name: address_id
+            data_type: INTEGER
+            description: FK to address table
+          - column_name: activebool
+            data_type: BOOLEAN
+            description: Is customer active?
+          - column_name: create_date
+            data_type: DATE
+            description: Account creation date
+          - column_name: active
+            data_type: INTEGER
+            description: Active status (0 or 1)
+      - table_name: public.rental
+        table_description: Rental transactions
+        columns:
+          - column_name: rental_id
+            data_type: INTEGER
+            description: Unique rental identifier (Primary Key)
+          - column_name: rental_date
+            data_type: TIMESTAMP
+            description: When DVD was rented
+          - column_name: inventory_id
+            data_type: INTEGER
+            description: FK to inventory (specific DVD copy)
+          - column_name: customer_id
+            data_type: INTEGER
+            description: FK to customer
+          - column_name: return_date
+            data_type: TIMESTAMP
+            description: When DVD was returned (NULL if not returned)
+          - column_name: staff_id
+            data_type: INTEGER
+            description: FK to staff who processed rental
+      - table_name: public.payment
+        table_description: Customer payments
+        columns:
+          - column_name: payment_id
+            data_type: INTEGER
+            description: Unique payment identifier (Primary Key)
+          - column_name: customer_id
+            data_type: INTEGER
+            description: FK to customer
+          - column_name: staff_id
+            data_type: INTEGER
+            description: FK to staff who processed payment
+          - column_name: rental_id
+            data_type: INTEGER
+            description: FK to rental (if payment for rental)
+          - column_name: amount
+            data_type: NUMERIC(5,2)
+            description: Payment amount
+          - column_name: payment_date
+            data_type: TIMESTAMP
+            description: When payment was made
+      - table_name: public.staff
+        table_description: Store employees
+        columns:
+          - column_name: staff_id
+            data_type: INTEGER
+            description: Unique staff identifier (Primary Key)
+          - column_name: first_name
+            data_type: VARCHAR(45)
+            description: Staff first name
+          - column_name: last_name
+            data_type: VARCHAR(45)
+            description: Staff last name
+          - column_name: address_id
+            data_type: INTEGER
+            description: FK to address
+          - column_name: email
+            data_type: VARCHAR(50)
+            description: Staff email
+          - column_name: store_id
+            data_type: INTEGER
+            description: FK to store
+          - column_name: active
+            data_type: BOOLEAN
+            description: Is staff member active?
+          - column_name: username
+            data_type: VARCHAR(16)
+            description: Login username
+      - table_name: public.address
+        table_description: Addresses for customers, staff, and stores
+        columns:
+          - column_name: address_id
+            data_type: INTEGER
+            description: Unique address identifier (Primary Key)
+          - column_name: address
+            data_type: VARCHAR(50)
+            description: Street address line 1
+          - column_name: address2
+            data_type: VARCHAR(50)
+            description: Street address line 2
+          - column_name: district
+            data_type: VARCHAR(20)
+            description: District/county
+          - column_name: city_id
+            data_type: INTEGER
+            description: FK to city
+          - column_name: postal_code
+            data_type: VARCHAR(10)
+            description: Postal/ZIP code
+          - column_name: phone
+            data_type: VARCHAR(20)
+            description: Phone number
+      - table_name: public.city
+        table_description: Cities worldwide
+        columns:
+          - column_name: city_id
+            data_type: INTEGER
+            description: Unique city identifier (Primary Key)
+          - column_name: city
+            data_type: VARCHAR(50)
+            description: City name
+          - column_name: country_id
+            data_type: INTEGER
+            description: FK to country
+      - table_name: public.country
+        table_description: Countries
+        columns:
+          - column_name: country_id
+            data_type: INTEGER
+            description: Unique country identifier (Primary Key)
+          - column_name: country
+            data_type: VARCHAR(50)
+            description: Country name
+    few_shot_examples:
+      - question: What are the most rented films?
+        answer: '"Bucket Brotherhood" is the most rented film with 34 rentals, followed by "Rocketeer Mother" with 33.'
+        sql_query: |
+          SELECT f.title AS film,
+                 COUNT(r.rental_id) AS rental_count
+          FROM public.film f
+          JOIN public.inventory i ON f.film_id = i.film_id
+          JOIN public.rental r ON i.inventory_id = r.inventory_id
+          GROUP BY f.film_id, f.title
+          ORDER BY rental_count DESC
+          LIMIT 10
+      - question: Which actors appear in the most films?
+        answer: 'Gina Degeneres appears in 42 films, followed by Walter Torn with 41.'
+        sql_query: |
+          SELECT a.first_name || ' ' || a.last_name AS actor,
+                 COUNT(fa.film_id) AS film_count
+          FROM public.actor a
+          JOIN public.film_actor fa ON a.actor_id = fa.actor_id
+          GROUP BY a.actor_id, a.first_name, a.last_name
+          ORDER BY film_count DESC
+          LIMIT 10
+      - question: What is the revenue by film category?
+        answer: 'Sports generates the most revenue at $5,314.21, followed by Sci-Fi at $4,756.98.'
+        sql_query: |
+          SELECT c.name AS category,
+                 SUM(p.amount) AS total_revenue
+          FROM public.category c
+          JOIN public.film_category fc ON c.category_id = fc.category_id
+          JOIN public.film f ON fc.film_id = f.film_id
+          JOIN public.inventory i ON f.film_id = i.film_id
+          JOIN public.rental r ON i.inventory_id = r.inventory_id
+          JOIN public.payment p ON r.rental_id = p.rental_id
+          GROUP BY c.category_id, c.name
+          ORDER BY total_revenue DESC
+      - question: Which customers have overdue rentals?
+        answer: 'There are 183 rentals that have not been returned yet.'
+        sql_query: |
+          SELECT c.first_name || ' ' || c.last_name AS customer,
+                 c.email,
+                 f.title AS film,
+                 r.rental_date,
+                 f.rental_duration,
+                 r.rental_date + INTERVAL '1 day' * f.rental_duration AS due_date
+          FROM public.rental r
+          JOIN public.customer c ON r.customer_id = c.customer_id
+          JOIN public.inventory i ON r.inventory_id = i.inventory_id
+          JOIN public.film f ON i.film_id = f.film_id
+          WHERE r.return_date IS NULL
+            AND r.rental_date + INTERVAL '1 day' * f.rental_duration < NOW()
+          ORDER BY r.rental_date
+          LIMIT 20
+      - question: What is the average rental duration by rating?
+        answer: 'NC-17 rated films have the longest average rental duration at 5.1 days.'
+        sql_query: |
+          SELECT f.rating,
+                 COUNT(*) AS film_count,
+                 ROUND(AVG(f.rental_duration), 1) AS avg_rental_days,
+                 ROUND(AVG(f.rental_rate), 2) AS avg_rental_rate,
+                 ROUND(AVG(f.length), 0) AS avg_length_minutes
+          FROM public.film f
+          GROUP BY f.rating
+          ORDER BY avg_rental_days DESC
+
+max_retries: 3
+
+

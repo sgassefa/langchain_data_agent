@@ -149,6 +149,7 @@ class PostgresDatasource(BaseSettings):
         connection_string: Full connection string (overrides other settings).
     """
 
+
     model_config = SettingsConfigDict(
         env_prefix="POSTGRES_",
         env_file=".env",
@@ -165,6 +166,54 @@ class PostgresDatasource(BaseSettings):
     connection_string: str = ""
 
 
+
+class MySQLDatasource(BaseSettings):
+    """MySQL connection.
+
+    Attributes:
+        type: Datasource type identifier.
+        host: Database server hostname.
+        port: Database server port.
+        database: Database name.
+        username: Database username.
+        password: Database password.
+        connection_string: Full connection string (overrides other settings).
+    """
+
+
+    model_config = SettingsConfigDict(
+        env_prefix="MYSQL_",
+        env_file=".env",
+        extra="ignore",
+    )
+
+    type: Literal["mysql"] = "mysql"
+    host: str = "localhost"
+    port: int = 3306
+    database: str = ""
+    username: str = ""
+    password: str = ""
+    connection_string: str = ""
+
+
+class SQLiteDatasource(BaseSettings):
+    """SQLite connection.
+
+    Attributes:
+        type: Datasource type identifier.
+        database: Path to SQLite database file.
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="SQLITE_",
+        env_file=".env",
+        extra="ignore",
+    )
+
+    type: Literal["sqlite"] = "sqlite"
+    database: str = ""
+
+
 class _MSSQLDatasourceBase(BaseSettings):
     """Base class for Microsoft SQL Server-based datasources.
 
@@ -178,6 +227,7 @@ class _MSSQLDatasourceBase(BaseSettings):
         driver: ODBC driver name.
         connection_string: Full connection string (overrides other settings).
     """
+
 
     server: str = ""
     database: str = ""
@@ -202,6 +252,7 @@ class AzureSQLDatasource(_MSSQLDatasourceBase):
         driver: ODBC driver name.
         connection_string: Full connection string (overrides other settings).
     """
+
 
     model_config = SettingsConfigDict(
         env_prefix="AZURE_SQL_",
@@ -308,6 +359,8 @@ DATASOURCE_TYPES: dict[str, type[Datasource]] = {
     "azure_sql": AzureSQLDatasource,
     "synapse": SynapseDatasource,
     "bigquery": BigQueryDatasource,
+    "mysql": MySQLDatasource,
+    "sqlite": SQLiteDatasource,
 }
 
 

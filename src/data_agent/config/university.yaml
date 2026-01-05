@@ -1,0 +1,360 @@
+# University Database (SQLite) - NL2SQL Agent Configuration
+# Academic database with departments, instructors, students, courses, and enrollments
+# Based on Database System Concepts by Silberschatz, Korth, Sudarshan
+# Reference: https://www.db-book.com/university-lab-dir/sqljs.html
+
+intent_detection_agent:
+  llm:
+    model: gpt-4o-mini
+    provider: openai
+    api_version: 2024-12-01-preview
+    temperature: 1.0
+    max_tokens: 500
+  system_prompt: |
+    You are an intent detection assistant responsible for routing user questions to the appropriate data agent.
+    ## Available Data Agents
+
+    {agent_descriptions}
+
+    ## Instructions
+
+    1. Analyze the user's question to understand what data they are asking about.
+    2. Match the question to the most relevant data agent based on the domain and data types.
+    3. If the question is ambiguous, choose the agent most likely to have the relevant data.
+    4. If no agent is a clear match, respond with "unknown".
+
+    ## Response Format
+
+    Respond with ONLY the agent name (e.g., "university_academic"). Do not include any explanation.
+
+data_agents:
+  - name: university_academic
+    datasource:
+      type: sqlite
+      database: data/university.db
+    llm:
+      model: gpt-4o-mini
+      provider: openai
+      api_version: 2024-12-01-preview
+      temperature: 1.0
+      max_tokens: 2000
+    system_prompt: |
+      You are an expert SQL assistant for the University academic database running on SQLite.
+      
+      ## Your Role
+
+      Generate accurate, efficient SQLite queries based on natural language questions. You have access to academic data including departments, instructors, students, courses, sections, and enrollments.
+      
+      ## Database Context
+
+      {schema_context}
+
+      ## Examples
+
+      {few_shot_examples}
+
+      ## SQLite Generation Guidelines
+
+      1. **Use only tables and columns defined in the schema above.** Never reference tables or columns not listed.
+      2. **Use SQLite syntax.** This includes:
+         - LIMIT instead of TOP for row limiting
+         - strftime() for date formatting
+         - || for string concatenation
+         - IFNULL() or COALESCE() for null handling
+         - CAST() for type conversions
+      3. **Always qualify column names** with table aliases to avoid ambiguity.
+      4. **Use appropriate JOINs** when combining data from multiple tables.
+      5. **Include WHERE clauses** to filter data when the question implies filtering.
+      6. **Use GROUP BY** for aggregations and ORDER BY for sorting results.
+      7. **Use LIMIT N** to limit results unless the user specifies otherwise.
+      8. **Handle academic terminology:**
+         - "Fall", "Spring", "Summer", "Winter" are semester values
+         - Grades: A, A-, B+, B, B-, C+, C, C-, D, F
+         - tot_cred means total credits earned by student
+
+      ## Response Format
+
+      Provide your response as JSON with two fields:
+      - "sql_query": The generated SQLite query
+      - "explanation": Brief explanation of what the query does
+    response_prompt: |
+      You are a helpful academic data analyst.
+
+      Given the user's question, the SQL query that was executed, and the results,
+      provide a clear and concise natural language response.
+
+      Be conversational but precise. Include relevant numbers, percentages, and insights.
+      Format salary values with $ and commas. Format large numbers for readability.
+      If the results are empty, explain what that means in context.
+
+      ## Data Presentation
+
+      When the query returns tabular data (multiple rows/columns), ALWAYS include a formatted markdown table.
+      - Use proper markdown table syntax with headers
+      - Align numeric columns to the right
+      - Format salary with $ and two decimal places
+      - Limit tables to 20 rows max; note if more exist
+    table_schemas:
+      - table_name: department
+        table_description: Academic departments with their buildings and budgets
+        columns:
+          - column_name: dept_name
+            data_type: VARCHAR(20)
+            description: Department name (Primary Key) - e.g., 'Comp. Sci.', 'Physics', 'Biology'
+          - column_name: building
+            data_type: VARCHAR(15)
+            description: Building where department is located
+          - column_name: budget
+            data_type: NUMERIC(12,2)
+            description: Annual department budget in dollars
+
+      - table_name: instructor
+        table_description: Faculty members who teach courses
+        columns:
+          - column_name: ID
+            data_type: VARCHAR(5)
+            description: Unique instructor identifier (Primary Key)
+          - column_name: name
+            data_type: VARCHAR(20)
+            description: Instructor's name
+          - column_name: dept_name
+            data_type: VARCHAR(20)
+            description: Department affiliation (Foreign Key to department)
+          - column_name: salary
+            data_type: NUMERIC(8,2)
+            description: Annual salary in dollars (minimum 29000)
+
+      - table_name: student
+        table_description: Enrolled students with their academic progress
+        columns:
+          - column_name: ID
+            data_type: VARCHAR(5)
+            description: Unique student identifier (Primary Key)
+          - column_name: name
+            data_type: VARCHAR(20)
+            description: Student's name
+          - column_name: dept_name
+            data_type: VARCHAR(20)
+            description: Major department (Foreign Key to department)
+          - column_name: tot_cred
+            data_type: NUMERIC(3,0)
+            description: Total credits completed by the student
+
+      - table_name: course
+        table_description: Available courses in the course catalog
+        columns:
+          - column_name: course_id
+            data_type: VARCHAR(8)
+            description: Course code (Primary Key) - e.g., 'CS-101', 'BIO-301'
+          - column_name: title
+            data_type: VARCHAR(50)
+            description: Course title
+          - column_name: dept_name
+            data_type: VARCHAR(20)
+            description: Department offering the course (Foreign Key)
+          - column_name: credits
+            data_type: NUMERIC(2,0)
+            description: Number of credit hours for the course
+
+      - table_name: section
+        table_description: Course sections offered in specific semesters
+        columns:
+          - column_name: course_id
+            data_type: VARCHAR(8)
+            description: Course code (Part of Primary Key, Foreign Key to course)
+          - column_name: sec_id
+            data_type: VARCHAR(8)
+            description: Section number within course (Part of Primary Key)
+          - column_name: semester
+            data_type: VARCHAR(6)
+            description: Semester offered - 'Fall', 'Winter', 'Spring', or 'Summer'
+          - column_name: year
+            data_type: NUMERIC(4,0)
+            description: Academic year (1701-2100)
+          - column_name: building
+            data_type: VARCHAR(15)
+            description: Building where section meets
+          - column_name: room_number
+            data_type: VARCHAR(7)
+            description: Room number for class meetings
+          - column_name: time_slot_id
+            data_type: VARCHAR(4)
+            description: Time slot identifier (Foreign Key to time_slot)
+
+      - table_name: teaches
+        table_description: Assignment of instructors to course sections
+        columns:
+          - column_name: ID
+            data_type: VARCHAR(5)
+            description: Instructor ID (Part of Primary Key, Foreign Key to instructor)
+          - column_name: course_id
+            data_type: VARCHAR(8)
+            description: Course code (Part of Primary Key)
+          - column_name: sec_id
+            data_type: VARCHAR(8)
+            description: Section number (Part of Primary Key)
+          - column_name: semester
+            data_type: VARCHAR(6)
+            description: Semester (Part of Primary Key)
+          - column_name: year
+            data_type: NUMERIC(4,0)
+            description: Academic year (Part of Primary Key)
+
+      - table_name: takes
+        table_description: Student course enrollments and grades
+        columns:
+          - column_name: ID
+            data_type: VARCHAR(5)
+            description: Student ID (Part of Primary Key, Foreign Key to student)
+          - column_name: course_id
+            data_type: VARCHAR(8)
+            description: Course code (Part of Primary Key)
+          - column_name: sec_id
+            data_type: VARCHAR(8)
+            description: Section number (Part of Primary Key)
+          - column_name: semester
+            data_type: VARCHAR(6)
+            description: Semester (Part of Primary Key)
+          - column_name: year
+            data_type: NUMERIC(4,0)
+            description: Academic year (Part of Primary Key)
+          - column_name: grade
+            data_type: VARCHAR(2)
+            description: Grade received - A, A-, B+, B, B-, C+, C, C-, D, F, or NULL if in progress
+
+      - table_name: advisor
+        table_description: Student-instructor advising relationships
+        columns:
+          - column_name: s_ID
+            data_type: VARCHAR(5)
+            description: Student ID (Primary Key, Foreign Key to student)
+          - column_name: i_ID
+            data_type: VARCHAR(5)
+            description: Instructor ID of advisor (Foreign Key to instructor)
+
+      - table_name: prereq
+        table_description: Course prerequisite relationships
+        columns:
+          - column_name: course_id
+            data_type: VARCHAR(8)
+            description: Course that has a prerequisite (Part of Primary Key)
+          - column_name: prereq_id
+            data_type: VARCHAR(8)
+            description: Required prerequisite course (Part of Primary Key)
+
+      - table_name: classroom
+        table_description: Physical classroom locations and capacities
+        columns:
+          - column_name: building
+            data_type: VARCHAR(15)
+            description: Building name (Part of Primary Key)
+          - column_name: room_number
+            data_type: VARCHAR(7)
+            description: Room number (Part of Primary Key)
+          - column_name: capacity
+            data_type: NUMERIC(4,0)
+            description: Seating capacity of the room
+
+      - table_name: time_slot
+        table_description: Class meeting time patterns
+        columns:
+          - column_name: time_slot_id
+            data_type: VARCHAR(4)
+            description: Time slot identifier (Part of Primary Key)
+          - column_name: day
+            data_type: VARCHAR(1)
+            description: Day of week - M, T, W, R (Thursday), F (Part of Primary Key)
+          - column_name: start_time
+            data_type: TIME
+            description: Class start time (Part of Primary Key)
+          - column_name: end_time
+            data_type: TIME
+            description: Class end time
+
+    few_shot_examples:
+      - question: "Who teaches Database System Concepts?"
+        sql_query: |
+          SELECT i.name AS instructor, c.title AS course, s.semester, s.year
+          FROM instructor i
+          JOIN teaches t ON i.ID = t.ID
+          JOIN course c ON t.course_id = c.course_id
+          JOIN section s ON t.course_id = s.course_id 
+            AND t.sec_id = s.sec_id 
+            AND t.semester = s.semester 
+            AND t.year = s.year
+          WHERE c.title = 'Database System Concepts';
+        answer: "Joins instructor, teaches, course, and section tables to find who teaches the Database System Concepts course."
+
+      - question: "What is the average salary by department?"
+        sql_query: |
+          SELECT dept_name, 
+                 COUNT(*) AS num_instructors,
+                 ROUND(AVG(salary), 2) AS avg_salary,
+                 MIN(salary) AS min_salary,
+                 MAX(salary) AS max_salary
+          FROM instructor
+          GROUP BY dept_name
+          ORDER BY avg_salary DESC;
+        answer: "Calculates salary statistics for each department using aggregation functions."
+
+      - question: "List students who got an A in any Computer Science course"
+        sql_query: |
+          SELECT DISTINCT s.name AS student, c.title AS course, t.grade
+          FROM student s
+          JOIN takes t ON s.ID = t.ID
+          JOIN course c ON t.course_id = c.course_id
+          WHERE c.dept_name = 'Comp. Sci.' 
+            AND t.grade IN ('A', 'A-')
+          ORDER BY s.name;
+        answer: "Finds students with A or A- grades in Computer Science courses by joining student, takes, and course tables."
+
+      - question: "What are the prerequisites for CS-315?"
+        sql_query: |
+          SELECT c.course_id, c.title, p.prereq_id, pc.title AS prereq_title
+          FROM course c
+          JOIN prereq p ON c.course_id = p.course_id
+          JOIN course pc ON p.prereq_id = pc.course_id
+          WHERE c.course_id = 'CS-315';
+        answer: "Retrieves prerequisite courses for CS-315 using a self-join on the course table through prereq."
+
+      - question: "How many students are enrolled in each department?"
+        sql_query: |
+          SELECT dept_name, 
+                 COUNT(*) AS num_students,
+                 ROUND(AVG(tot_cred), 1) AS avg_credits
+          FROM student
+          GROUP BY dept_name
+          ORDER BY num_students DESC;
+        answer: "Counts students per department and calculates average credits completed."
+
+      - question: "Find instructors who earn more than the average salary"
+        sql_query: |
+          SELECT name, dept_name, salary
+          FROM instructor
+          WHERE salary > (SELECT AVG(salary) FROM instructor)
+          ORDER BY salary DESC;
+        answer: "Uses a subquery to compare each instructor's salary against the overall average."
+
+      - question: "What courses are offered in Fall 2024?"
+        sql_query: |
+          SELECT c.course_id, c.title, s.sec_id, i.name AS instructor,
+                 s.building, s.room_number
+          FROM section s
+          JOIN course c ON s.course_id = c.course_id
+          LEFT JOIN teaches t ON s.course_id = t.course_id 
+            AND s.sec_id = t.sec_id 
+            AND s.semester = t.semester 
+            AND s.year = t.year
+          LEFT JOIN instructor i ON t.ID = i.ID
+          WHERE s.semester = 'Fall' AND s.year = 2024
+          ORDER BY c.course_id;
+        answer: "Lists all course sections offered in Fall 2024 with their instructors and locations."
+
+      - question: "Who advises student Zhang?"
+        sql_query: |
+          SELECT s.name AS student, s.dept_name AS major, i.name AS advisor
+          FROM student s
+          JOIN advisor a ON s.ID = a.s_ID
+          JOIN instructor i ON a.i_ID = i.ID
+          WHERE s.name = 'Zhang';
+        answer: "Finds the advisor for a specific student by joining student, advisor, and instructor tables."

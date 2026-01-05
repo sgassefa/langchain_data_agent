@@ -1,0 +1,368 @@
+# Chinook Database (MySQL) - NL2SQL Agent Configuration
+# Music store database with artists, albums, tracks, customers, invoices
+
+intent_detection_agent:
+  llm:
+    model: gpt-4o-mini
+    provider: openai
+    api_version: 2024-12-01-preview
+    temperature: 1.0
+    max_tokens: 500
+  system_prompt: |
+    You are an intent detection assistant responsible for routing user questions to the appropriate data agent.
+    ## Available Data Agents
+
+    {agent_descriptions}
+
+    ## Instructions
+
+    1. Analyze the user's question to understand what data they are asking about.
+    2. Match the question to the most relevant data agent based on the domain and data types.
+    3. If the question is ambiguous, choose the agent most likely to have the relevant data.
+    4. If no agent is a clear match, respond with "unknown".
+
+    ## Response Format
+
+    Respond with ONLY the agent name (e.g., "chinook_music"). Do not include any explanation.
+
+data_agents:
+  - name: chinook_music
+    datasource:
+      type: mysql
+      host: lis4230mysql.mysql.database.azure.com
+      port: 3306
+      database: chinook
+      username: dbadmin
+      password: goRDBMS4230
+    llm:
+      model: gpt-4o-mini
+      provider: openai
+      api_version: 2024-12-01-preview
+      temperature: 1.0
+      max_tokens: 2000
+    system_prompt: |
+      You are an expert SQL assistant for the Chinook music store database running on MySQL.
+      
+      ## Your Role
+
+      Generate accurate, efficient MySQL queries based on natural language questions. You have access to music catalog, customer, and sales data.
+      
+      ## Database Context
+
+      {schema_context}
+
+      ## Examples
+
+      {few_shot_examples}
+
+      ## MySQL Generation Guidelines
+
+      1. **Use only tables and columns defined in the schema above.** Never reference tables or columns not listed.
+      2. **Use MySQL syntax.** This includes:
+         - LIMIT instead of TOP for row limiting
+         - DATE_FORMAT, DATE_ADD, DATE_SUB for date operations
+         - NOW(), CURDATE() for current time
+         - CONCAT() for string concatenation
+         - IFNULL() or COALESCE() for null handling
+      3. **Always qualify column names** with table aliases to avoid ambiguity.
+      4. **Use backticks** for reserved words if needed.
+      5. **Use appropriate JOINs** when combining data from multiple tables.
+      6. **Include WHERE clauses** to filter data when the question implies filtering.
+      7. **Use GROUP BY** for aggregations and ORDER BY for sorting results.
+      8. **Use LIMIT N** to limit results unless the user specifies otherwise.
+
+      ## Response Format
+
+      Provide your response as JSON with two fields:
+      - "sql_query": The generated MySQL query
+      - "explanation": Brief explanation of what the query does
+    response_prompt: |
+      You are a helpful music store analyst.
+
+      Given the user's question, the SQL query that was executed, and the results,
+      provide a clear and concise natural language response.
+
+      Be conversational but precise. Include relevant numbers, percentages, and insights.
+      Format currency values with $ and commas. Format large numbers for readability.
+      If the results are empty, explain what that means in context.
+
+      ## Data Presentation
+
+      When the query returns tabular data (multiple rows/columns), ALWAYS include a formatted markdown table.
+      - Use proper markdown table syntax with headers
+      - Align numeric columns to the right
+      - Format prices with $ and two decimal places
+      - Limit tables to 20 rows max; note if more exist
+    table_schemas:
+      - table_name: Artist
+        table_description: Music artists and bands
+        columns:
+          - column_name: ArtistId
+            data_type: INT
+            description: Unique artist identifier (Primary Key)
+          - column_name: Name
+            data_type: VARCHAR(120)
+            description: Artist or band name
+      - table_name: Album
+        table_description: Music albums linked to artists
+        columns:
+          - column_name: AlbumId
+            data_type: INT
+            description: Unique album identifier (Primary Key)
+          - column_name: Title
+            data_type: VARCHAR(160)
+            description: Album title
+          - column_name: ArtistId
+            data_type: INT
+            description: Foreign key to Artist table
+      - table_name: Track
+        table_description: Individual music tracks with pricing and duration
+        columns:
+          - column_name: TrackId
+            data_type: INT
+            description: Unique track identifier (Primary Key)
+          - column_name: Name
+            data_type: VARCHAR(200)
+            description: Track name
+          - column_name: AlbumId
+            data_type: INT
+            description: Foreign key to Album table
+          - column_name: MediaTypeId
+            data_type: INT
+            description: Foreign key to MediaType table
+          - column_name: GenreId
+            data_type: INT
+            description: Foreign key to Genre table
+          - column_name: Composer
+            data_type: VARCHAR(220)
+            description: Track composer(s)
+          - column_name: Milliseconds
+            data_type: INT
+            description: Track duration in milliseconds
+          - column_name: Bytes
+            data_type: INT
+            description: Track file size in bytes
+          - column_name: UnitPrice
+            data_type: DECIMAL(10,2)
+            description: Price per track in USD
+      - table_name: Genre
+        table_description: Music genres (Rock, Jazz, Classical, etc.)
+        columns:
+          - column_name: GenreId
+            data_type: INT
+            description: Unique genre identifier (Primary Key)
+          - column_name: Name
+            data_type: VARCHAR(120)
+            description: Genre name
+      - table_name: MediaType
+        table_description: Media formats (MPEG, AAC, etc.)
+        columns:
+          - column_name: MediaTypeId
+            data_type: INT
+            description: Unique media type identifier (Primary Key)
+          - column_name: Name
+            data_type: VARCHAR(120)
+            description: Media type name
+      - table_name: Playlist
+        table_description: User-created playlists
+        columns:
+          - column_name: PlaylistId
+            data_type: INT
+            description: Unique playlist identifier (Primary Key)
+          - column_name: Name
+            data_type: VARCHAR(120)
+            description: Playlist name
+      - table_name: PlaylistTrack
+        table_description: Junction table linking playlists to tracks (many-to-many)
+        columns:
+          - column_name: PlaylistId
+            data_type: INT
+            description: Foreign key to Playlist table
+          - column_name: TrackId
+            data_type: INT
+            description: Foreign key to Track table
+      - table_name: Customer
+        table_description: Store customers with contact information
+        columns:
+          - column_name: CustomerId
+            data_type: INT
+            description: Unique customer identifier (Primary Key)
+          - column_name: FirstName
+            data_type: VARCHAR(40)
+            description: Customer first name
+          - column_name: LastName
+            data_type: VARCHAR(20)
+            description: Customer last name
+          - column_name: Company
+            data_type: VARCHAR(80)
+            description: Customer company name
+          - column_name: Address
+            data_type: VARCHAR(70)
+            description: Street address
+          - column_name: City
+            data_type: VARCHAR(40)
+            description: City
+          - column_name: State
+            data_type: VARCHAR(40)
+            description: State or province
+          - column_name: Country
+            data_type: VARCHAR(40)
+            description: Country
+          - column_name: PostalCode
+            data_type: VARCHAR(10)
+            description: Postal/ZIP code
+          - column_name: Phone
+            data_type: VARCHAR(24)
+            description: Phone number
+          - column_name: Fax
+            data_type: VARCHAR(24)
+            description: Fax number
+          - column_name: Email
+            data_type: VARCHAR(60)
+            description: Email address
+          - column_name: SupportRepId
+            data_type: INT
+            description: Foreign key to Employee (support representative)
+      - table_name: Employee
+        table_description: Store employees with hierarchy
+        columns:
+          - column_name: EmployeeId
+            data_type: INT
+            description: Unique employee identifier (Primary Key)
+          - column_name: LastName
+            data_type: VARCHAR(20)
+            description: Employee last name
+          - column_name: FirstName
+            data_type: VARCHAR(20)
+            description: Employee first name
+          - column_name: Title
+            data_type: VARCHAR(30)
+            description: Job title
+          - column_name: ReportsTo
+            data_type: INT
+            description: Manager's EmployeeId (self-referencing FK)
+          - column_name: BirthDate
+            data_type: DATETIME
+            description: Date of birth
+          - column_name: HireDate
+            data_type: DATETIME
+            description: Hire date
+          - column_name: Address
+            data_type: VARCHAR(70)
+            description: Street address
+          - column_name: City
+            data_type: VARCHAR(40)
+            description: City
+          - column_name: State
+            data_type: VARCHAR(40)
+            description: State or province
+          - column_name: Country
+            data_type: VARCHAR(40)
+            description: Country
+          - column_name: PostalCode
+            data_type: VARCHAR(10)
+            description: Postal/ZIP code
+          - column_name: Phone
+            data_type: VARCHAR(24)
+            description: Phone number
+          - column_name: Fax
+            data_type: VARCHAR(24)
+            description: Fax number
+          - column_name: Email
+            data_type: VARCHAR(60)
+            description: Email address
+      - table_name: Invoice
+        table_description: Customer purchase invoices
+        columns:
+          - column_name: InvoiceId
+            data_type: INT
+            description: Unique invoice identifier (Primary Key)
+          - column_name: CustomerId
+            data_type: INT
+            description: Foreign key to Customer table
+          - column_name: InvoiceDate
+            data_type: DATETIME
+            description: Date of invoice
+          - column_name: BillingAddress
+            data_type: VARCHAR(70)
+            description: Billing street address
+          - column_name: BillingCity
+            data_type: VARCHAR(40)
+            description: Billing city
+          - column_name: BillingState
+            data_type: VARCHAR(40)
+            description: Billing state
+          - column_name: BillingCountry
+            data_type: VARCHAR(40)
+            description: Billing country
+          - column_name: BillingPostalCode
+            data_type: VARCHAR(10)
+            description: Billing postal code
+          - column_name: Total
+            data_type: DECIMAL(10,2)
+            description: Invoice total amount in USD
+      - table_name: InvoiceLine
+        table_description: Individual line items on invoices
+        columns:
+          - column_name: InvoiceLineId
+            data_type: INT
+            description: Unique line item identifier (Primary Key)
+          - column_name: InvoiceId
+            data_type: INT
+            description: Foreign key to Invoice table
+          - column_name: TrackId
+            data_type: INT
+            description: Foreign key to Track table
+          - column_name: UnitPrice
+            data_type: DECIMAL(10,2)
+            description: Price per unit at time of sale
+          - column_name: Quantity
+            data_type: INT
+            description: Quantity purchased
+    few_shot_examples:
+      - question: What are the top 10 best-selling artists?
+        answer: Led Zeppelin is the best-selling artist with 140 tracks sold, followed by U2 and Metallica.
+        sql_query: |
+          SELECT ar.Name AS Artist, COUNT(il.InvoiceLineId) AS TracksSold
+          FROM Artist ar
+          JOIN Album al ON ar.ArtistId = al.ArtistId
+          JOIN Track t ON al.AlbumId = t.AlbumId
+          JOIN InvoiceLine il ON t.TrackId = il.TrackId
+          GROUP BY ar.ArtistId, ar.Name
+          ORDER BY TracksSold DESC
+          LIMIT 10
+      - question: How much revenue did each genre generate?
+        answer: Rock generated $826.65 in revenue, followed by Latin at $382.14.
+        sql_query: |
+          SELECT g.Name AS Genre, 
+                 ROUND(SUM(il.UnitPrice * il.Quantity), 2) AS Revenue
+          FROM Genre g
+          JOIN Track t ON g.GenreId = t.GenreId
+          JOIN InvoiceLine il ON t.TrackId = il.TrackId
+          GROUP BY g.GenreId, g.Name
+          ORDER BY Revenue DESC
+      - question: Who are our top customers by total purchases?
+        answer: Helena Holý from Czech Republic is the top customer with $49.62 in purchases.
+        sql_query: |
+          SELECT CONCAT(c.FirstName, ' ', c.LastName) AS Customer,
+                 c.Country,
+                 ROUND(SUM(i.Total), 2) AS TotalPurchases
+          FROM Customer c
+          JOIN Invoice i ON c.CustomerId = i.CustomerId
+          GROUP BY c.CustomerId, c.FirstName, c.LastName, c.Country
+          ORDER BY TotalPurchases DESC
+          LIMIT 10
+      - question: What are the longest tracks in the database?
+        answer: "'Occupation / Precipice' is the longest track at 88 minutes, from the Battlestar Galactica album."
+        sql_query: |
+          SELECT t.Name AS Track,
+                 al.Title AS Album,
+                 ar.Name AS Artist,
+                 ROUND(t.Milliseconds / 60000, 2) AS DurationMinutes
+          FROM Track t
+          JOIN Album al ON t.AlbumId = al.AlbumId
+          JOIN Artist ar ON al.ArtistId = ar.ArtistId
+          ORDER BY t.Milliseconds DESC
+          LIMIT 10
+
+max_retries: 3

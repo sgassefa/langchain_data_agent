@@ -39,7 +39,7 @@ class LLMFactory:
         providers: Registered provider instances by name.
 
     Example:
-        ```python
+        `python
         factory = LLMFactory()
         factory.register_provider(AzureOpenAIProvider())
 
@@ -49,7 +49,7 @@ class LLMFactory:
             api_key="your-key",
             deployment_name="gpt-4",
         )
-        ```
+        `
     """
 
     def __init__(self) -> None:
@@ -111,10 +111,14 @@ def get_llm(provider: str, **kwargs: Any) -> BaseChatModel:
         Configured BaseChatModel instance.
     """
     from data_agent.llm.provider import AzureOpenAIProvider
+    from data_agent.llm.github_provider import GitHubModelsProvider
+    from data_agent.llm.openai_provider import OpenAIProvider
 
     global _default_factory
     if _default_factory is None:
         _default_factory = LLMFactory()
         _default_factory.register_provider(AzureOpenAIProvider())
+        _default_factory.register_provider(GitHubModelsProvider())
+        _default_factory.register_provider(OpenAIProvider())
 
     return _default_factory.create_llm(provider, **kwargs)

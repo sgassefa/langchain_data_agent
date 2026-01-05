@@ -37,9 +37,7 @@
           "type": "string",
           "description": "LLM provider name",
           "enum": [
-            "azure_openai",
-            "openai",
-            "anthropic"
+            "azure_openai", "openai", "anthropic", "github"
           ],
           "default": "azure_openai"
         },
@@ -203,21 +201,27 @@
       "oneOf": [
         {
           "$ref": "#/$defs/databricks_datasource"
-        },
-        {
+        },{
+        
           "$ref": "#/$defs/cosmos_datasource"
-        },
-        {
+        },{
+        
           "$ref": "#/$defs/postgres_datasource"
-        },
-        {
+        },{
+        
           "$ref": "#/$defs/azure_sql_datasource"
-        },
-        {
+        },{
+        
           "$ref": "#/$defs/synapse_datasource"
-        },
-        {
+        },{
+        
           "$ref": "#/$defs/bigquery_datasource"
+        },{
+        
+          "$ref": "#/$defs/mysql_datasource"
+        },{
+        
+          "$ref": "#/$defs/sqlite_datasource"
         }
       ]
     },
@@ -421,6 +425,62 @@
         "database"
       ]
     },
+        "mysql_datasource": {
+      "type": "object",
+      "description": "MySQL connection",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "mysql"
+        },
+        "host": {
+          "type": "string",
+          "description": "MySQL server hostname"
+        },
+        "port": {
+          "type": "integer",
+          "description": "MySQL server port",
+          "default": 3306
+        },
+        "database": {
+          "type": "string",
+          "description": "Database name"
+        },
+        "username": {
+          "type": "string",
+          "description": "Database username"
+        },
+        "password": {
+          "type": "string",
+          "description": "Database password"
+        },
+        "connection_string": {
+          "type": "string",
+          "description": "Full connection string (overrides other settings)"
+        }
+      },
+      "required": [
+        "type"
+      ]
+    },
+    "sqlite_datasource": {
+      "type": "object",
+      "description": "SQLite connection",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "sqlite"
+        },
+        "database": {
+          "type": "string",
+          "description": "Path to SQLite database file"
+        }
+      },
+      "required": [
+        "type",
+        "database"
+      ]
+    },
     "bigquery_datasource": {
       "type": "object",
       "description": "Google BigQuery connection",
@@ -459,8 +519,8 @@
           "required": [
             "project"
           ]
-        },
-        {
+        },{
+        
           "required": [
             "project_id"
           ]

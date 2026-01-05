@@ -13,8 +13,9 @@
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/sgassefa/langchain_data_agent?quickstart=1)
 
-
+> 🎓 **Students**: [Click here for the Quick Start Guide](course/STUDENT_QUICKSTART.md) - Get running in 5 minutes!
 
 ---
 

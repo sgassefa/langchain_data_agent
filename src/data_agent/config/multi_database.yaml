@@ -1,0 +1,438 @@
+# Multi-Database NL2SQL Agent Configuration
+# Routes queries to the appropriate database based on domain
+
+intent_detection_agent:
+  llm:
+    model: gpt-4o-mini
+    provider: openai
+    api_version: 2024-12-01-preview
+    temperature: 0.3  # Lower temperature for more consistent routing
+    max_tokens: 500
+  system_prompt: |
+    You are an intent detection assistant responsible for routing user questions to the appropriate data agent.
+    
+    ## Available Data Agents
+
+    {agent_descriptions}
+
+    ## Instructions
+
+    1. Analyze the user's question to understand what data domain they are asking about.
+    2. Match the question to the most relevant data agent based on keywords and context:
+       - **contoso_hr**: Questions about employees, departments, salaries, performance reviews, time-off, HR data
+       - **chinook_music**: Questions about artists, albums, tracks, music, playlists, music store customers/invoices
+       - **pagila_dvd**: Questions about films/movies, actors, rentals, DVD store customers, payments
+    3. If the question mentions a specific database or domain, route accordingly.
+    4. If ambiguous, make your best guess based on the nouns used.
+    5. If truly unclear, respond with "unknown".
+
+    ## Response Format
+
+    Respond with ONLY the agent name (e.g., "contoso_hr", "chinook_music", or "pagila_dvd"). Do not include any explanation.
+
+data_agents:
+  # ============================================
+  # ContosoHR - Azure SQL (HR Management)
+  # ============================================
+  - name: contoso_hr
+    description: |
+      HR database with employee, department, salary, performance review, and time-off data.
+      Use for questions about: employees, departments, salaries, managers, performance ratings, vacation requests, HR analytics.
+    datasource:
+      type: azure_sql
+      server: lis-4230.database.windows.net
+      database: ContosoHR
+      use_aad: false
+      username: dbadmin
+    llm:
+      model: gpt-4o-mini
+      provider: openai
+      api_version: 2024-12-01-preview
+      temperature: 1.0
+      max_tokens: 2000
+    system_prompt: |
+      You are an expert SQL assistant for the Contoso HR database running on Azure SQL Database.
+      
+      ## Your Role
+      Generate accurate, efficient T-SQL queries based on natural language questions. You have access to employee, department, performance review, and time-off data.
+      
+      ## Database Context
+      {schema_context}
+
+      ## Examples
+      {few_shot_examples}
+
+      ## T-SQL Generation Guidelines
+      1. Use T-SQL syntax (TOP, GETDATE(), DATEADD, etc.)
+      2. Always qualify column names with table aliases
+      3. Use schema-qualified names (dbo.TableName)
+      4. Handle NULL values appropriately
+
+      ## Response Format
+      Provide your response as JSON with:
+      - "sql_query": The generated T-SQL query
+      - "explanation": Brief explanation of what the query does
+    response_prompt: |
+      You are a helpful HR analyst for Contoso.
+      Provide clear natural language responses with formatted tables for tabular data.
+      Format salaries with $ and commas. Include insights and summaries.
+    table_schemas:
+      - table_name: dbo.Departments
+        table_description: Company departments with budget information
+        columns:
+          - column_name: DepartmentID
+            data_type: INT
+            description: Unique department identifier
+          - column_name: Name
+            data_type: NVARCHAR(100)
+            description: Department name
+          - column_name: Budget
+            data_type: DECIMAL(12,2)
+            description: Annual department budget in USD
+          - column_name: ManagerID
+            data_type: INT
+            description: Employee ID of the department manager
+      - table_name: dbo.Employees
+        table_description: Employee information including salary and organizational hierarchy
+        columns:
+          - column_name: EmployeeID
+            data_type: INT
+            description: Unique employee identifier
+          - column_name: FirstName
+            data_type: NVARCHAR(50)
+            description: Employee first name
+          - column_name: LastName
+            data_type: NVARCHAR(50)
+            description: Employee last name
+          - column_name: Email
+            data_type: NVARCHAR(100)
+            description: Employee email address
+          - column_name: DepartmentID
+            data_type: INT
+            description: Department the employee belongs to
+          - column_name: Title
+            data_type: NVARCHAR(100)
+            description: Job title
+          - column_name: HireDate
+            data_type: DATE
+            description: Date the employee was hired
+          - column_name: Salary
+            data_type: DECIMAL(10,2)
+            description: Annual salary in USD
+          - column_name: ManagerID
+            data_type: INT
+            description: Employee ID of the direct manager
+          - column_name: IsActive
+            data_type: BIT
+            description: Whether the employee is currently active
+      - table_name: dbo.PerformanceReviews
+        table_description: Employee performance review records
+        columns:
+          - column_name: ReviewID
+            data_type: INT
+            description: Unique review identifier
+          - column_name: EmployeeID
+            data_type: INT
+            description: Employee being reviewed
+          - column_name: ReviewDate
+            data_type: DATE
+            description: Date of the review
+          - column_name: Rating
+            data_type: INT
+            description: Performance rating (1-5)
+          - column_name: ReviewerID
+            data_type: INT
+            description: Employee ID of the reviewer
+          - column_name: Comments
+            data_type: NVARCHAR(500)
+            description: Review comments
+      - table_name: dbo.TimeOffRequests
+        table_description: Employee time-off and leave requests
+        columns:
+          - column_name: RequestID
+            data_type: INT
+            description: Unique request identifier
+          - column_name: EmployeeID
+            data_type: INT
+            description: Employee requesting time off
+          - column_name: StartDate
+            data_type: DATE
+            description: Start date of time off
+          - column_name: EndDate
+            data_type: DATE
+            description: End date of time off
+          - column_name: Type
+            data_type: NVARCHAR(50)
+            description: Type (Vacation, Sick, Personal, Conference)
+          - column_name: Status
+            data_type: NVARCHAR(20)
+            description: Status (Pending, Approved, Denied)
+          - column_name: DaysRequested
+            data_type: INT
+            description: Number of days requested
+    few_shot_examples:
+      - question: How many employees are in each department?
+        sql_query: |
+          SELECT d.Name AS Department, COUNT(e.EmployeeID) AS EmployeeCount
+          FROM dbo.Departments d
+          LEFT JOIN dbo.Employees e ON d.DepartmentID = e.DepartmentID
+          WHERE e.IsActive = 1
+          GROUP BY d.DepartmentID, d.Name
+          ORDER BY EmployeeCount DESC
+      - question: What is the average salary by department?
+        sql_query: |
+          SELECT d.Name AS Department, AVG(e.Salary) AS AvgSalary
+          FROM dbo.Departments d
+          JOIN dbo.Employees e ON d.DepartmentID = e.DepartmentID
+          WHERE e.IsActive = 1
+          GROUP BY d.DepartmentID, d.Name
+          ORDER BY AvgSalary DESC
+
+  # ============================================
+  # Chinook - MySQL (Music Store)
+  # ============================================
+  - name: chinook_music
+    description: |
+      Music store database with artists, albums, tracks, genres, playlists, and sales data.
+      Use for questions about: artists, albums, songs/tracks, music genres, playlists, music purchases, invoices.
+    datasource:
+      type: mysql
+      host: ${MYSQL_HOST}
+      port: 3306
+      database: chinook
+      username: ${MYSQL_USER}
+    llm:
+      model: gpt-4o-mini
+      provider: openai
+      api_version: 2024-12-01-preview
+      temperature: 1.0
+      max_tokens: 2000
+    system_prompt: |
+      You are an expert SQL assistant for the Chinook music store database running on MySQL.
+      
+      ## Your Role
+      Generate accurate, efficient MySQL queries. You have access to music catalog, customer, and sales data.
+      
+      ## Database Context
+      {schema_context}
+
+      ## Examples
+      {few_shot_examples}
+
+      ## MySQL Generation Guidelines
+      1. Use MySQL syntax (LIMIT, CONCAT, NOW(), DATE_FORMAT)
+      2. Always qualify column names with table aliases
+      3. Use backticks for reserved words if needed
+
+      ## Response Format
+      Provide your response as JSON with:
+      - "sql_query": The generated MySQL query
+      - "explanation": Brief explanation of what the query does
+    response_prompt: |
+      You are a helpful music store analyst.
+      Provide clear natural language responses with formatted tables for tabular data.
+      Format prices with $ and two decimals. Include insights about music trends.
+    table_schemas:
+      - table_name: Artist
+        columns:
+          - column_name: ArtistId
+            data_type: INT
+          - column_name: Name
+            data_type: VARCHAR(120)
+      - table_name: Album
+        columns:
+          - column_name: AlbumId
+            data_type: INT
+          - column_name: Title
+            data_type: VARCHAR(160)
+          - column_name: ArtistId
+            data_type: INT
+      - table_name: Track
+        columns:
+          - column_name: TrackId
+            data_type: INT
+          - column_name: Name
+            data_type: VARCHAR(200)
+          - column_name: AlbumId
+            data_type: INT
+          - column_name: GenreId
+            data_type: INT
+          - column_name: Milliseconds
+            data_type: INT
+          - column_name: UnitPrice
+            data_type: DECIMAL(10,2)
+      - table_name: Genre
+        columns:
+          - column_name: GenreId
+            data_type: INT
+          - column_name: Name
+            data_type: VARCHAR(120)
+      - table_name: Customer
+        columns:
+          - column_name: CustomerId
+            data_type: INT
+          - column_name: FirstName
+            data_type: VARCHAR(40)
+          - column_name: LastName
+            data_type: VARCHAR(20)
+          - column_name: Email
+            data_type: VARCHAR(60)
+          - column_name: Country
+            data_type: VARCHAR(40)
+      - table_name: Invoice
+        columns:
+          - column_name: InvoiceId
+            data_type: INT
+          - column_name: CustomerId
+            data_type: INT
+          - column_name: InvoiceDate
+            data_type: DATETIME
+          - column_name: Total
+            data_type: DECIMAL(10,2)
+      - table_name: InvoiceLine
+        columns:
+          - column_name: InvoiceLineId
+            data_type: INT
+          - column_name: InvoiceId
+            data_type: INT
+          - column_name: TrackId
+            data_type: INT
+          - column_name: UnitPrice
+            data_type: DECIMAL(10,2)
+          - column_name: Quantity
+            data_type: INT
+    few_shot_examples:
+      - question: What are the top selling artists?
+        sql_query: |
+          SELECT ar.Name AS Artist, COUNT(il.InvoiceLineId) AS TracksSold
+          FROM Artist ar
+          JOIN Album al ON ar.ArtistId = al.ArtistId
+          JOIN Track t ON al.AlbumId = t.AlbumId
+          JOIN InvoiceLine il ON t.TrackId = il.TrackId
+          GROUP BY ar.ArtistId, ar.Name
+          ORDER BY TracksSold DESC
+          LIMIT 10
+
+  # ============================================
+  # Pagila - PostgreSQL (DVD Rental)
+  # ============================================
+  - name: pagila_dvd
+    description: |
+      DVD rental store database with films, actors, rentals, customers, and payment data.
+      Use for questions about: films/movies, actors, DVD rentals, store customers, payments, movie categories.
+    datasource:
+      type: postgresql
+      host: ${POSTGRES_HOST}
+      port: 5432
+      database: pagila
+      username: ${POSTGRES_USER}
+    llm:
+      model: gpt-4o-mini
+      provider: openai
+      api_version: 2024-12-01-preview
+      temperature: 1.0
+      max_tokens: 2000
+    system_prompt: |
+      You are an expert SQL assistant for the Pagila DVD rental database running on PostgreSQL.
+      
+      ## Your Role
+      Generate accurate, efficient PostgreSQL queries. You have access to film catalog, rental, and payment data.
+      
+      ## Database Context
+      {schema_context}
+
+      ## Examples
+      {few_shot_examples}
+
+      ## PostgreSQL Generation Guidelines
+      1. Use PostgreSQL syntax (LIMIT, ||, EXTRACT, INTERVAL)
+      2. Use public schema prefix for tables
+      3. Window functions available for analytics
+
+      ## Response Format
+      Provide your response as JSON with:
+      - "sql_query": The generated PostgreSQL query
+      - "explanation": Brief explanation of what the query does
+    response_prompt: |
+      You are a helpful DVD rental store analyst.
+      Provide clear natural language responses with formatted tables for tabular data.
+      Format rental amounts with $ and two decimals. Include insights about rental patterns.
+    table_schemas:
+      - table_name: public.film
+        columns:
+          - column_name: film_id
+            data_type: INTEGER
+          - column_name: title
+            data_type: VARCHAR(255)
+          - column_name: release_year
+            data_type: INTEGER
+          - column_name: rental_rate
+            data_type: NUMERIC(4,2)
+          - column_name: length
+            data_type: SMALLINT
+          - column_name: rating
+            data_type: VARCHAR(10)
+      - table_name: public.actor
+        columns:
+          - column_name: actor_id
+            data_type: INTEGER
+          - column_name: first_name
+            data_type: VARCHAR(45)
+          - column_name: last_name
+            data_type: VARCHAR(45)
+      - table_name: public.film_actor
+        columns:
+          - column_name: actor_id
+            data_type: INTEGER
+          - column_name: film_id
+            data_type: INTEGER
+      - table_name: public.category
+        columns:
+          - column_name: category_id
+            data_type: INTEGER
+          - column_name: name
+            data_type: VARCHAR(25)
+      - table_name: public.customer
+        columns:
+          - column_name: customer_id
+            data_type: INTEGER
+          - column_name: first_name
+            data_type: VARCHAR(45)
+          - column_name: last_name
+            data_type: VARCHAR(45)
+          - column_name: email
+            data_type: VARCHAR(50)
+      - table_name: public.rental
+        columns:
+          - column_name: rental_id
+            data_type: INTEGER
+          - column_name: rental_date
+            data_type: TIMESTAMP
+          - column_name: inventory_id
+            data_type: INTEGER
+          - column_name: customer_id
+            data_type: INTEGER
+          - column_name: return_date
+            data_type: TIMESTAMP
+      - table_name: public.payment
+        columns:
+          - column_name: payment_id
+            data_type: INTEGER
+          - column_name: customer_id
+            data_type: INTEGER
+          - column_name: amount
+            data_type: NUMERIC(5,2)
+          - column_name: payment_date
+            data_type: TIMESTAMP
+    few_shot_examples:
+      - question: What are the most rented films?
+        sql_query: |
+          SELECT f.title, COUNT(r.rental_id) AS rental_count
+          FROM public.film f
+          JOIN public.inventory i ON f.film_id = i.film_id
+          JOIN public.rental r ON i.inventory_id = r.inventory_id
+          GROUP BY f.film_id, f.title
+          ORDER BY rental_count DESC
+          LIMIT 10
+
+max_retries: 3

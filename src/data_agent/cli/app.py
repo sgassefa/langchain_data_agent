@@ -232,6 +232,12 @@ def display_result(
     if result_dict.get("final_response"):
         print_response(result_dict["final_response"])
 
+    # Always show the generated SQL if available
+    generated_sql = result_dict.get("generated_sql")
+    if generated_sql:
+        from data_agent.cli.output import print_sql
+        print_sql(generated_sql)
+
     error = result_dict.get("error")
     if error and error != "out_of_scope" and not str(error).startswith("Interrupt"):
         print_error_panel(str(error))
