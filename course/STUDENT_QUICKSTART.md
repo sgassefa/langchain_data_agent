@@ -23,12 +23,21 @@ Your Question → [GitHub Token/AI] → Generates SQL → [Database Credentials]
 
 ## 🚀 Option 1: GitHub Codespaces (Recommended - Zero Install)
 
-### Step 1: Open in Codespaces
+### Step 1: Open in Codespaces (Browser-Based)
 1. Go to the course repository on GitHub
 2. Click the green **"Code"** button
 3. Select **"Codespaces"** tab
 4. Click **"Create codespace on main"**
 5. Wait ~2 minutes for the environment to build
+
+> **💡 Tip: Open in Browser, Not VS Code**
+> 
+> By default, Codespaces may open in VS Code Desktop. To use the browser instead:
+> 1. Go to [github.com/settings/codespaces](https://github.com/settings/codespaces)
+> 2. Under **"Editor preference"**, select **"Visual Studio Code for the Web"**
+> 3. Save changes
+> 
+> Or, when clicking on an existing Codespace, look for **"Open in Browser"** option.
 
 ### Step 2: Get Your GitHub Token (FREE!)
 GitHub Models is **free** for all GitHub users! You just need a Personal Access Token:
@@ -56,6 +65,48 @@ uv run data-agent query "What courses does Srinivasan teach?" -c university
 ```
 
 You should see a response with courses and the generated SQL! 🎉
+
+### 🔄 Updating an Existing Codespace
+
+If you created your Codespace before updates were made to the repository, run these commands to get the latest code:
+
+```bash
+# Pull the latest code
+git pull origin main
+
+# Reinstall the package with new features
+uv sync
+
+# Verify the teach command is available
+uv run data-agent --help
+```
+
+You should see `teach` in the list of available commands.
+
+---
+
+## 📖 Learning Mode: `teach` Command
+
+Before diving into SQL queries, use the **teach** command to learn database fundamentals:
+
+```bash
+# Start an interactive tutoring session
+uv run data-agent teach
+
+# Or ask a specific question
+uv run data-agent teach "What is a primary key?"
+uv run data-agent teach "Explain 1NF, 2NF, and 3NF with examples"
+```
+
+The AI tutor will help you understand:
+- Database fundamentals and terminology
+- Entity-Relationship Diagrams (ERD)
+- Primary keys, foreign keys, and relationships
+- Normalization (1NF, 2NF, 3NF)
+- SQL syntax and commands
+- Schema design best practices
+
+**No database connection required** - perfect for learning concepts first!
 
 ---
 
@@ -162,11 +213,28 @@ The University database contains these tables:
 
 ## 🛠️ Troubleshooting
 
+### "Command 'teach' not recognized"
+Your Codespace may have older code. Update it:
+```bash
+git pull origin main
+uv sync
+```
+
 ### "Invalid API key" or "Authentication failed" (GitHub Token)
 - Verify your GitHub token is correct in `.env`
 - Make sure there are no extra spaces or quotes
-- Check that your token has "Models: Read" permission
+- Check that your token has **"Models: Read"** permission
 - Try generating a new token
+
+### Using OpenAI Instead of GitHub Models
+If you see "OpenAI" in error messages when you expected GitHub Models:
+1. Make sure `GITHUB_TOKEN` is set in your `.env` (not just `OPENAI_API_KEY`)
+2. The `GITHUB_TOKEN` line should come **before** `OPENAI_API_KEY` in `.env`
+3. Example correct `.env`:
+   ```
+   GITHUB_TOKEN=github_pat_your-token-here
+   # OPENAI_API_KEY=sk-...  # Comment this out
+   ```
 
 ### "Connection refused" or "Access denied" (Database)
 - Verify your database credentials are correct
@@ -180,6 +248,11 @@ Run: `uv sync` to reinstall dependencies
 - Try rephrasing your question
 - Be specific with names (e.g., "Srinivasan" not "the CS instructor")
 - Check the generated SQL to understand what was queried
+
+### Codespace Opens in VS Code Desktop Instead of Browser
+1. Go to [github.com/settings/codespaces](https://github.com/settings/codespaces)
+2. Under "Editor preference", select "Visual Studio Code for the Web"
+3. Save changes
 
 ### Need Help?
 - Check the course Slack/Discord channel
