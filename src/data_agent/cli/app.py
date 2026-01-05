@@ -300,6 +300,174 @@ def query(
 
 
 @app.command()
+def teach(
+    topic: Annotated[
+        str | None,
+        typer.Argument(
+            help="Optional topic or question to start with",
+        ),
+    ] = None,
+    log_level: Annotated[
+        str | None,
+        typer.Option(
+            "--log-level",
+            "-l",
+            help="Logging level (debug, info, warning, error)",
+        ),
+    ] = None,
+) -> None:
+    """Start teaching mode - learn database concepts interactively.
+
+    A conversational AI tutor for learning relational database concepts.
+    No database connection required - perfect for learning fundamentals
+    like ERD, normalization, SQL syntax, and schema design.
+
+    Examples:
+        # Start interactive teaching session
+        data-agent teach
+
+        # Ask a specific question
+        data-agent teach "What is a primary key?"
+
+        # Learn about normalization
+        data-agent teach "Explain 1NF, 2NF, and 3NF with examples"
+    """
+    import os
+    from langchain_openai import ChatOpenAI
+    from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+    from rich.markdown import Markdown
+    from rich.panel import Panel
+
+    if log_level:
+        setup_logging(LOG_LEVELS.get(log_level.lower(), logging.INFO))
+
+    # Get GitHub token
+    api_key = os.getenv("GITHUB_TOKEN") or os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        print_error("No API key found. Set GITHUB_TOKEN or OPENAI_API_KEY in .env")
+        raise typer.Exit(1)
+
+    # Determine provider based on available key
+    if os.getenv("GITHUB_TOKEN"):
+        llm = ChatOpenAI(
+            base_url="https://models.inference.ai.azure.com",
+            api_key=os.getenv("GITHUB_TOKEN"),
+            model="gpt-4o-mini",
+            temperature=0.7,
+            max_tokens=2000,
+        )
+    else:
+        llm = ChatOpenAI(
+            api_key=os.getenv("OPENAI_API_KEY"),
+            model="gpt-4o-mini",
+            temperature=0.7,
+            max_tokens=2000,
+        )
+
+    # Teaching system prompt
+    system_prompt = """You are a friendly and patient database instructor teaching a graduate-level course on Relational Database Management Systems. Your students have ZERO background in databases.
+
+## Your Teaching Style
+- Use simple, clear explanations with real-world analogies
+- Always provide concrete examples (use a library, university, or music store as examples)
+- When explaining SQL, show the syntax AND what it means in plain English
+- Break complex topics into digestible pieces
+- Encourage questions and validate student understanding
+- Use tables and diagrams (in ASCII/text) when helpful
+
+## Topics You Can Teach
+- Database fundamentals (what is a database, why use one, types)
+- Relational model (tables, rows, columns, records, fields)
+- Entities, attributes, and relationships
+- Entity-Relationship Diagrams (ERD) - draw them in ASCII
+- Keys (primary, foreign, candidate, composite)
+- Cardinality (1:1, 1:N, M:N relationships)
+- SQL basics (SELECT, INSERT, UPDATE, DELETE)
+- DDL (CREATE TABLE, ALTER, DROP, data types, constraints)
+- JOINs (INNER, LEFT, RIGHT, FULL) with visual examples
+- Normalization (1NF, 2NF, 3NF) with before/after examples
+- Indexes and performance
+- Transactions and ACID properties
+- Schema design best practices
+
+## Response Format
+- Keep responses focused and not too long
+- Use markdown formatting for code blocks and tables
+- If showing SQL, always explain what each part does
+- End complex explanations with a quick comprehension check question
+
+Remember: You're helping students who are completely new to databases. Be encouraging!"""
+
+    # Print welcome banner
+    console.print()
+    console.print(Panel(
+        "[bold cyan]📚 Database Teaching Mode[/bold cyan]\n\n"
+        "I'm your AI tutor for learning relational databases!\n"
+        "Ask me anything about:\n"
+        "• Database concepts & terminology\n"
+        "• ERD and schema design\n"
+        "• SQL syntax (DDL, DML, queries)\n"
+        "• Normalization (1NF, 2NF, 3NF)\n"
+        "• JOINs, indexes, transactions\n\n"
+        "[dim]Type 'quit' or 'exit' to end the session.[/dim]",
+        title="🎓 Teaching Mode",
+        border_style="cyan",
+    ))
+    console.print()
+
+    # Initialize conversation history
+    messages = [SystemMessage(content=system_prompt)]
+
+    # If topic provided, ask about it
+    if topic:
+        console.print(f"[bold cyan]You:[/bold cyan] {topic}")
+        messages.append(HumanMessage(content=topic))
+        with console.status("[cyan]Thinking...[/cyan]", spinner="dots"):
+            response = llm.invoke(messages)
+        messages.append(AIMessage(content=response.content))
+        console.print()
+        console.print(Panel(
+            Markdown(response.content),
+            title="[bold green]Tutor[/bold green]",
+            border_style="green",
+            padding=(1, 2),
+        ))
+        console.print()
+
+    # Interactive loop
+    while True:
+        try:
+            user_input = Prompt.ask("[bold cyan]You[/bold cyan]")
+        except (KeyboardInterrupt, EOFError):
+            console.print("\n[muted]Happy learning! 📚[/muted]")
+            break
+
+        if not user_input.strip():
+            continue
+
+        if user_input.strip().lower() in {"quit", "exit", "q"}:
+            console.print("[muted]Happy learning! 📚[/muted]")
+            break
+
+        # Add to conversation and get response
+        messages.append(HumanMessage(content=user_input))
+        
+        with console.status("[cyan]Thinking...[/cyan]", spinner="dots"):
+            response = llm.invoke(messages)
+        
+        messages.append(AIMessage(content=response.content))
+        
+        console.print()
+        console.print(Panel(
+            Markdown(response.content),
+            title="[bold green]Tutor[/bold green]",
+            border_style="green",
+            padding=(1, 2),
+        ))
+        console.print()
+
+
+@app.command()
 def chat(
     config: Annotated[
         str | None,
