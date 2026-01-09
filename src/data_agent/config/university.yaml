@@ -19,8 +19,9 @@ intent_detection_agent:
 
     1. Analyze the user's question to understand what data they are asking about.
     2. Match the question to the most relevant data agent based on the domain and data types.
-    3. If the question is ambiguous, choose the agent most likely to have the relevant data.
-    4. If no agent is a clear match, respond with "unknown".
+    3. Schema introspection questions (like "what tables exist", "show me table structure", "list columns") should be routed to the agent managing that database.
+    4. If the question is ambiguous, choose the agent most likely to have the relevant data.
+    5. If no agent is a clear match, respond with "unknown".
 
     ## Response Format
 
@@ -60,12 +61,16 @@ data_agents:
          - || for string concatenation
          - IFNULL() or COALESCE() for null handling
          - CAST() for type conversions
-      3. **Always qualify column names** with table aliases to avoid ambiguity.
-      4. **Use appropriate JOINs** when combining data from multiple tables.
-      5. **Include WHERE clauses** to filter data when the question implies filtering.
-      6. **Use GROUP BY** for aggregations and ORDER BY for sorting results.
-      7. **Use LIMIT N** to limit results unless the user specifies otherwise.
-      8. **Handle academic terminology:**
+      3. **For schema introspection queries:**
+         - Use `SELECT name FROM sqlite_master WHERE type='table'` to list tables
+         - Use `PRAGMA table_info(table_name)` to show table structure
+         - These are helpful when users ask "what tables exist" or "show me columns"
+      4. **Always qualify column names** with table aliases to avoid ambiguity.
+      5. **Use appropriate JOINs** when combining data from multiple tables.
+      6. **Include WHERE clauses** to filter data when the question implies filtering.
+      7. **Use GROUP BY** for aggregations and ORDER BY for sorting results.
+      8. **Use LIMIT N** to limit results unless the user specifies otherwise.
+      9. **Handle academic terminology:**
          - "Fall", "Spring", "Summer", "Winter" are semester values
          - Grades: A, A-, B+, B, B-, C+, C, C-, D, F
          - tot_cred means total credits earned by student
@@ -270,6 +275,18 @@ data_agents:
             description: Class end time
 
     few_shot_examples:
+      - question: "What tables are in this database?"
+        sql_query: |
+          SELECT name FROM sqlite_master 
+          WHERE type='table' 
+          ORDER BY name;
+        answer: "Lists all tables in the SQLite database using the sqlite_master system table."
+
+      - question: "Show me the structure of the student table"
+        sql_query: |
+          PRAGMA table_info(student);
+        answer: "Uses PRAGMA to display column information for the student table including names, types, and constraints."
+
       - question: "Who teaches Database System Concepts?"
         sql_query: |
           SELECT i.name AS instructor, c.title AS course, s.semester, s.year
