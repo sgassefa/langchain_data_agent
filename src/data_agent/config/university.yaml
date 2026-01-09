@@ -29,6 +29,7 @@ intent_detection_agent:
 
 data_agents:
   - name: university_academic
+    description: Handles queries about university academic data including database schema introspection, departments, instructors, students, courses, sections, enrollments, and prerequisites
     datasource:
       type: sqlite
       database: data/university.db
